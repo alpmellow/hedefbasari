@@ -275,9 +275,13 @@ export default function TeacherPortalView({
           <div>
             <label className="block text-xs font-bold text-slate-400 mb-1">Teslim Süresi</label>
             <select value={hwForm.hoursUntilDeadline} onChange={(e) => setHwForm({ ...hwForm, hoursUntilDeadline: Number(e.target.value) })} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm">
-              <option value={24}>24 Saat İçinde</option>
-              <option value={48}>48 Saat İçinde</option>
-              <option value={72}>72 Saat İçinde</option>
+              <option value="24">1 Gün İçinde</option>
+              <option value="48">2 Gün İçinde</option>
+              <option value="72">3 Gün İçinde</option>
+              <option value="96">4 Gün İçinde</option>
+              <option value="120">5 Gün İçinde</option>
+              <option value="144">6 Gün İçinde</option>
+              <option value="168">7 Gün İçinde</option>
             </select>
           </div>
 
