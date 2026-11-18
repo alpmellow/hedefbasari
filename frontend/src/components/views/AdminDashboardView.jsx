@@ -59,6 +59,24 @@ export default function AdminDashboardView({
     tcNo: '', fullName: '', className: HEDEFBASARI_CLASS_OPTIONS[0], paymentStatus: 'Ödendi', pin: generateRandom6DigitPin()
   });
 
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [studentClassFilter, setStudentClassFilter] = useState('ALL');
+  const [studentPaymentFilter, setStudentPaymentFilter] = useState('ALL');
+
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) => {
+      const q = studentSearchQuery.trim().toLocaleLowerCase('tr-TR');
+      const matchesSearch =
+        !q ||
+        (s.fullName || '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (s.tcNo || '').includes(q) ||
+        (s.pin || '').includes(q);
+      const matchesClass = studentClassFilter === 'ALL' || s.className === studentClassFilter;
+      const matchesPayment = studentPaymentFilter === 'ALL' || s.paymentStatus === studentPaymentFilter;
+      return matchesSearch && matchesClass && matchesPayment;
+    });
+  }, [students, studentSearchQuery, studentClassFilter, studentPaymentFilter]);
+
   const [scheduleTeacherId, setScheduleTeacherId] = useState(staff[0]?.id || '');
   const selectedTeacherForSchedule = staff.find((t) => t.id === scheduleTeacherId) || staff[0];
 
@@ -368,35 +386,84 @@ export default function AdminDashboardView({
           </form>
 
           <div className="lg:col-span-2 space-y-3">
-            {students.map((s) => (
-              <div key={s.id} className={`p-5 rounded-2xl bg-slate-900 border transition flex flex-wrap items-center justify-between gap-4 ${editingStudentId === s.id ? 'border-amber-500/70 ring-1 ring-amber-500/30' : 'border-slate-800'}`}>
-                <div className="flex items-center gap-3.5">
-                  <UserAvatar src="" name={s.fullName} className="w-11 h-11" ringClass="ring-2 ring-cyan-500/30" textClass="text-xs" />
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <h3 className="text-base font-extrabold text-white">{s.fullName}</h3>
-                      <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-500/15 text-indigo-300">{s.className}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 mt-1 text-xs text-slate-400 font-mono">
-                      <span>TC: {maskTcKimlik(s.tcNo)}</span>
-                      <span>Şifre: <strong className="text-emerald-400">{s.pin}</strong></span>
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Ad soyad, TC No veya Şifre (PIN) ile ara..."
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  className="w-full pl-3.5 pr-8 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-cyan-500/50 focus:outline-none text-xs text-white"
+                />
+                {studentSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setStudentSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={studentClassFilter}
+                onChange={(e) => setStudentClassFilter(e.target.value)}
+                className="px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-cyan-300 focus:outline-none"
+              >
+                <option value="ALL">Tüm Sınıflar</option>
+                {HEDEFBASARI_CLASS_OPTIONS.map((cls) => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+
+              <select
+                value={studentPaymentFilter}
+                onChange={(e) => setStudentPaymentFilter(e.target.value)}
+                className="px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none"
+              >
+                <option value="ALL">Tüm Ödemeler</option>
+                <option value="Ödendi">Ödendi</option>
+                <option value="Taksit Devam Ediyor">Taksit Devam Ediyor</option>
+                <option value="Ödeme Gecikmiş">Ödeme Gecikmiş</option>
+              </select>
+            </div>
+
+            {filteredStudents.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center text-xs text-slate-400">
+                Arama kriterlerinize uygun öğrenci bulunamadı.
+              </div>
+            ) : (
+              filteredStudents.map((s) => (
+                <div key={s.id} className={`p-5 rounded-2xl bg-slate-900 border transition flex flex-wrap items-center justify-between gap-4 ${editingStudentId === s.id ? 'border-amber-500/70 ring-1 ring-amber-500/30' : 'border-slate-800'}`}>
+                  <div className="flex items-center gap-3.5">
+                    <UserAvatar src="" name={s.fullName} className="w-11 h-11" ringClass="ring-2 ring-cyan-500/30" textClass="text-xs" />
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h3 className="text-base font-extrabold text-white">{s.fullName}</h3>
+                        <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-500/15 text-indigo-300">{s.className}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 mt-1 text-xs text-slate-400 font-mono">
+                        <span>TC: {maskTcKimlik(s.tcNo)}</span>
+                        <span>Şifre: <strong className="text-emerald-400">{s.pin}</strong></span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${s.paymentStatus === 'Ödendi' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
-                    {s.paymentStatus}
-                  </span>
-                  <button onClick={() => handleEditStudentClick(s)} className="px-3 py-2 rounded-xl bg-slate-800 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition">
-                    <Edit3 className="w-3.5 h-3.5" /> Düzenle
-                  </button>
-                  <button onClick={() => handleDeleteStudent(s.id, s.fullName)} className="p-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 transition">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${s.paymentStatus === 'Ödendi' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                      {s.paymentStatus}
+                    </span>
+                    <button onClick={() => handleEditStudentClick(s)} className="px-3 py-2 rounded-xl bg-slate-800 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition">
+                      <Edit3 className="w-3.5 h-3.5" /> Düzenle
+                    </button>
+                    <button onClick={() => handleDeleteStudent(s.id, s.fullName)} className="p-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 transition">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       )}
@@ -711,4 +778,3 @@ export default function AdminDashboardView({
     </div>
   );
 }
-
