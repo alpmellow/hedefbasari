@@ -6,6 +6,7 @@ const SystemStateSchema = new mongoose.Schema({
   students: { type: Array, default: [] },
   appointments: { type: Array, default: [] },
   assignments: { type: Array, default: [] },
+  exams: { type: Array, default: [] },
   notifications: { type: Array, default: [] },
   adminAuth: {
     username: { type: String, default: 'hedef_admin' },

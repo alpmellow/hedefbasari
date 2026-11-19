@@ -19,21 +19,21 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
+  ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
   : '*';
 
 const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'] }
 });
 
-// Socket.io JWT Kimlik Dogrulama Katmani
+// Socket.io JWT Kimlik Doğrulama Katmanı
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) {
     return next(new Error('Yetkisiz Socket bağlantısı'));
   }
   try {
-    socket.user = jwt.verify(token, JWT_SECRET);
+    socket.user = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     next();
   } catch {
     next(new Error('Geçersiz veya süresi dolmuş Socket anahtarı'));
@@ -42,7 +42,7 @@ io.use((socket, next) => {
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: allowedOrigins }));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use('/api/', apiLimiter);
 
 app.use('/api/auth', authRoutes);

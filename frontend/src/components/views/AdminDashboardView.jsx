@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import UserAvatar from '../common/UserAvatar';
+import AdminExamAnalyticsTab from './AdminExamAnalyticsTab';
 import {
   GraduationCap, RefreshCw, Edit3, Trash2, UserPlus, Clock,
   Download, RotateCcw, CheckCircle2, XCircle, Key, ShieldCheck, FileCode
@@ -16,6 +17,7 @@ export default function AdminDashboardView({
   students, setStudents,
   appointments, setAppointments,
   assignments, setAssignments,
+  exams = [], setExams,
   adminAuth, setAdminAuth,
   lastDailyPurgeLabel, onTriggerDailyPurge,
   lastWeeklyResetLabel, onTriggerWeeklyReset,
@@ -193,7 +195,12 @@ export default function AdminDashboardView({
   };
 
   const handleDeleteTeacher = (teacherId, fullName) => {
+    if (!window.confirm(`"${fullName}" adlı eğitmeni kadrodan çıkarmak istediğinize emin misiniz?`)) return;
     setStaff((prev) => prev.filter((t) => t.id !== teacherId));
+    if (editingTeacherId === teacherId) {
+      setEditingTeacherId(null);
+      setTeacherForm({ tcNo: '', fullName: '', branch: '', photoUrl: '', biography: '', securityKey: generateRandom8CharKey() });
+    }
     emitSocketEvent('staff:deleted', `${fullName} kadrodan çıkarıldı.`);
   };
 
@@ -210,6 +217,15 @@ export default function AdminDashboardView({
         }))
       );
       setAssignments((prev) => prev.map((a) => (a.studentId === editingStudentId ? { ...a, studentName: studentForm.fullName } : a)));
+      if (setExams) {
+        setExams((prev) =>
+          prev.map((ex) =>
+            ex.studentId === editingStudentId
+              ? { ...ex, studentName: studentForm.fullName, studentClass: studentForm.className }
+              : ex
+          )
+        );
+      }
       emitSocketEvent('students:updated', `Öğrenci bilgileri güncellendi: ${studentForm.fullName}`);
       setEditingStudentId(null);
     } else {
@@ -237,7 +253,20 @@ export default function AdminDashboardView({
   };
 
   const handleDeleteStudent = (studentId, fullName) => {
+    if (!window.confirm(`"${fullName}" adlı öğrenciyi ve ona ait ödev/deneme kayıtlarını kalıcı olarak silmek istediğinize emin misiniz?`)) return;
     setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    setAppointments((prev) =>
+      prev
+        .map((slot) => ({
+          ...slot,
+          participants: (slot.participants || []).filter((p) => p.studentId !== studentId)
+        }))
+        .filter((slot) => (slot.participants || []).length > 0)
+    );
+    setAssignments((prev) => prev.filter((a) => a.studentId !== studentId));
+    if (setExams) {
+      setExams((prev) => prev.filter((ex) => ex.studentId !== studentId));
+    }
     if (editingStudentId === studentId) handleCancelEditStudent();
     emitSocketEvent('students:deleted', `Öğrenci kaydı silindi: ${fullName}`);
   };
@@ -317,12 +346,19 @@ export default function AdminDashboardView({
             { id: 'staff', label: `2. Kadro Yönetimi (${staff.length})` },
             { id: 'schedule', label: '3. Ders Programı Matrisi' },
             { id: 'approvals', label: `4. Randevu Onay Masası (${activeDeskAppointments.length})` },
-            { id: 'security', label: '5. Yönetici Güvenlik & Profil' }
+            { id: 'security', label: '5. Yönetici Güvenlik & Profil' },
+            { id: 'exams', label: `6. Deneme & Analiz (${exams.length})` }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition ${activeTab === tab.id ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'}`}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+                activeTab === tab.id
+                  ? tab.id === 'exams'
+                    ? 'bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 text-slate-950 font-black shadow-lg shadow-indigo-500/25'
+                    : 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25'
+                  : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
+              }`}
             >
               {tab.label}
             </button>
@@ -799,6 +835,17 @@ export default function AdminDashboardView({
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'exams' && (
+        <AdminExamAnalyticsTab
+          students={students}
+          appointments={appointments}
+          assignments={assignments}
+          exams={exams}
+          setExams={setExams}
+          emitSocketEvent={emitSocketEvent}
+        />
       )}
     </div>
   );

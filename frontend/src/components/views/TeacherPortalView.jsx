@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import UserAvatar from '../common/UserAvatar';
-import { BookOpen, Send, Calendar, Users, Trash2 } from '../common/Icons';
+import { BookOpen, Send, Calendar, Users, Trash2, Clock, CheckCircle2 } from '../common/Icons';
 import { TUTORING_PURPOSES, HEDEFBASARI_CLASS_OPTIONS, MAX_WEEKLY_APPOINTMENTS, MAX_SLOT_QUOTA } from '../../constants';
 import { getPurposeBadgeStyle, getNextMondayMidnightMs, formatSlotLabel } from '../../utils/helpers';
 
@@ -13,6 +13,8 @@ export default function TeacherPortalView({
   }, [appointments, currentTeacher?.id]);
 
   const [hwForm, setHwForm] = useState({ studentId: students[0]?.id || '', title: '', description: '', hoursUntilDeadline: 24 });
+  const [hwAlert, setHwAlert] = useState({ type: '', text: '' });
+
   const [summonForm, setSummonForm] = useState({
     studentId: students[0]?.id || '',
     slotValue: freeSlots[0] ? `${freeSlots[0].day}:${freeSlots[0].hourSlot}` : '',
@@ -39,8 +41,30 @@ export default function TeacherPortalView({
     return `${d}g ${h}s ${m}dk`;
   };
 
+  const formatHomeworkDeadlineStatus = (hw) => {
+    if (hw.isCompleted) {
+      return { label: 'Zamanında / Tamamlandı', colorClass: 'text-emerald-400', isOverdue: false };
+    }
+    if (!hw.deadline) {
+      return { label: 'Süre belirtilmedi', colorClass: 'text-slate-400', isOverdue: false };
+    }
+    const diff = new Date(hw.deadline).getTime() - nowMs;
+    if (diff <= 0) {
+      return { label: 'Süresi Doldu!', colorClass: 'text-rose-400 font-extrabold', isOverdue: true };
+    }
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const m = Math.floor((diff / (1000 * 60)) % 60);
+    if (d > 0) {
+      return { label: `${d}g ${h}s kaldı`, colorClass: 'text-cyan-300', isOverdue: false };
+    }
+    return { label: `${h}s ${m}dk kaldı`, colorClass: 'text-amber-300', isOverdue: false };
+  };
+
   const handleAssignHomework = (e) => {
     e.preventDefault();
+    setHwAlert({ type: '', text: '' });
+
     const targetStudent = students.find((s) => s.id === (hwForm.studentId || students[0]?.id));
     if (!targetStudent) return;
 
@@ -50,8 +74,8 @@ export default function TeacherPortalView({
       teacherName: currentTeacher.fullName,
       studentId: targetStudent.id,
       studentName: targetStudent.fullName,
-      title: hwForm.title,
-      description: hwForm.description,
+      title: hwForm.title.trim(),
+      description: hwForm.description.trim(),
       deadline: new Date(Date.now() + Number(hwForm.hoursUntilDeadline) * 3600 * 1000).toISOString(),
       isCompleted: false,
       completedAt: null
@@ -59,6 +83,7 @@ export default function TeacherPortalView({
 
     setAssignments((prev) => [newAssignment, ...prev]);
     setHwForm({ ...hwForm, title: '', description: '' });
+    setHwAlert({ type: 'success', text: `${targetStudent.fullName} öğrencisine ödev başarıyla atandı.` });
 
     emitSocketEvent('assignments:new', `${currentTeacher.fullName}, ${targetStudent.fullName} adlı öğrenciye yeni ödev atadı: "${newAssignment.title}"`, {
       targetUserId: targetStudent.id,
@@ -67,6 +92,17 @@ export default function TeacherPortalView({
       type: 'info',
       category: 'homework'
     });
+  };
+
+  const handleToggleHomeworkComplete = (hw) => {
+    const nextState = !hw.isCompleted;
+    setAssignments((prev) =>
+      prev.map((a) =>
+        a.id === hw.id
+          ? { ...a, isCompleted: nextState, completedAt: nextState ? new Date().toISOString() : null }
+          : a
+      )
+    );
   };
 
   const handleDeleteHomework = (hwId) => {
@@ -78,7 +114,8 @@ export default function TeacherPortalView({
     setSummonAlert({ type: '', text: '' });
 
     const targetStudent = students.find((s) => s.id === (summonForm.studentId || students[0]?.id));
-    const activeSlotVal = summonForm.slotValue || (freeSlots[0] ? `${freeSlots[0].day}:${freeSlots[0].hourSlot}` : ""); if (!targetStudent || !activeSlotVal) return;
+    const activeSlotVal = summonForm.slotValue || (freeSlots[0] ? `${freeSlots[0].day}:${freeSlots[0].hourSlot}` : '');
+    if (!targetStudent || !activeSlotVal) return;
 
     const [day, hourStr] = activeSlotVal.split(':');
     const hourSlot = Number(hourStr);
@@ -219,8 +256,10 @@ export default function TeacherPortalView({
       if (analysisScope === 'pending_hw' && !st.hasPendingMyHomework) return false;
       if (selectedClassFilter !== 'ALL' && st.className !== selectedClassFilter) return false;
       if (studentSearchQuery.trim()) {
-        const q = studentSearchQuery.toLowerCase().trim();
-        if (!st.fullName.toLowerCase().includes(q) && !st.className.toLowerCase().includes(q)) return false;
+        const q = studentSearchQuery.trim().toLocaleLowerCase('tr-TR');
+        const fullNameMatch = (st.fullName || '').toLocaleLowerCase('tr-TR').includes(q);
+        const classMatch = (st.className || '').toLocaleLowerCase('tr-TR').includes(q);
+        if (!fullNameMatch && !classMatch) return false;
       }
       return true;
     });
@@ -255,10 +294,22 @@ export default function TeacherPortalView({
             <BookOpen className="w-5 h-5 text-indigo-400" /> Öğrenciye Ödev Ata
           </h2>
 
+          {hwAlert.text && (
+            <div className={`p-3 rounded-xl text-xs font-bold ${hwAlert.type === 'error' ? 'bg-rose-500/15 text-rose-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+              {hwAlert.text}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-400 mb-1">Öğrenci Seçin</label>
-            <select value={hwForm.studentId} onChange={(e) => setHwForm({ ...hwForm, studentId: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm">
-              {students.map((s) => (<option key={s.id} value={s.id}>{s.fullName} ({s.className})</option>))}
+            <select
+              value={hwForm.studentId}
+              onChange={(e) => setHwForm({ ...hwForm, studentId: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm"
+            >
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>{s.fullName} ({s.className})</option>
+              ))}
             </select>
           </div>
 
@@ -269,7 +320,7 @@ export default function TeacherPortalView({
 
           <div>
             <label className="block text-xs font-bold text-slate-400 mb-1">Açıklama</label>
-            <textarea rows={2} required placeholder="Test detayları..." value={hwForm.description} onChange={(e) => setHwForm({ ...hwForm, description: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm" />
+            <textarea rows={2} required placeholder="Test detayları, sayfa aralığı veya soru hedefi..." value={hwForm.description} onChange={(e) => setHwForm({ ...hwForm, description: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm" />
           </div>
 
           <div>
@@ -483,7 +534,7 @@ export default function TeacherPortalView({
             )}
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="max-h-[620px] overflow-y-auto pr-1.5 grid md:grid-cols-2 gap-4">
             {filteredAnalysisStudents.map((st) => (
               <div key={st.id} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between">
                 <div className="space-y-3">
@@ -529,24 +580,46 @@ export default function TeacherPortalView({
                     {st.myTeacherHomeworks.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">Tarafınızdan atanmış aktif ödev yok.</p>
                     ) : (
-                      st.myTeacherHomeworks.map((hw) => (
-                        <div key={hw.id} className="text-xs flex items-center justify-between bg-slate-900 px-3 py-2 rounded-lg gap-2">
-                          <span className="text-slate-200 font-medium truncate">{hw.title}</span>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${hw.isCompleted ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                              {hw.isCompleted ? '✓ Tamamlandı' : 'Bekliyor'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteHomework(hw.id)}
-                              className="p-1 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/25"
-                              title="Ödevi Sil"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
+                      st.myTeacherHomeworks.map((hw) => {
+                        const deadlineInfo = formatHomeworkDeadlineStatus(hw);
+                        return (
+                          <div key={hw.id} className={`text-xs bg-slate-900 px-3 py-2.5 rounded-lg space-y-1.5 border ${deadlineInfo.isOverdue ? 'border-rose-500/40' : 'border-slate-800/60'}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-slate-100 font-bold truncate">{hw.title}</span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleHomeworkComplete(hw)}
+                                  title="Durumu Değiştir (Tamamlandı / Bekliyor)"
+                                  className={`px-2 py-0.5 rounded font-bold text-[10px] flex items-center gap-1 transition ${
+                                    hw.isCompleted
+                                      ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                                      : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                                  }`}
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  {hw.isCompleted ? 'Tamamlandı' : 'Bekliyor'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteHomework(hw.id)}
+                                  className="p-1 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/25"
+                                  title="Ödevi Sil"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            {hw.description && (
+                              <p className="text-[11px] text-slate-400 line-clamp-2">{hw.description}</p>
+                            )}
+                            <div className="flex items-center gap-1 text-[10px]">
+                              <Clock className="w-3 h-3 text-slate-500" />
+                              <span className={deadlineInfo.colorClass}>{deadlineInfo.label}</span>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -558,4 +631,3 @@ export default function TeacherPortalView({
     </div>
   );
 }
-

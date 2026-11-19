@@ -31,6 +31,7 @@ function sanitizeStateForRole(stateDoc, role = 'student', userId = null) {
       students: obj.students || [],
       appointments: obj.appointments || [],
       assignments: obj.assignments || [],
+      exams: obj.exams || [],
       notifications: obj.notifications || [],
       adminAuth: cleanAdminAuth,
       maintenanceMeta: obj.maintenanceMeta || {}
@@ -50,13 +51,14 @@ function sanitizeStateForRole(stateDoc, role = 'student', userId = null) {
       })),
       appointments: obj.appointments || [],
       assignments: obj.assignments || [],
+      exams: obj.exams || [],
       notifications: obj.notifications || [],
       adminAuth: cleanAdminAuth,
       maintenanceMeta: obj.maintenanceMeta || {}
     };
   }
 
-  // Öğrenci rolü: Başka öğrencilerin TC/PIN bilgilerini ve öğretmen anahtarlarını gizle
+  // Öğrenci rolü: Başka öğrencilerin TC/PIN, ödev ve deneme bilgilerini gizle
   return {
     staff: (obj.staff || []).map((t) => ({
       id: t.id,
@@ -73,6 +75,7 @@ function sanitizeStateForRole(stateDoc, role = 'student', userId = null) {
     ),
     appointments: obj.appointments || [],
     assignments: (obj.assignments || []).filter((a) => a.studentId === userId),
+    exams: (obj.exams || []).filter((ex) => ex.studentId === userId),
     notifications: (obj.notifications || []).filter((n) => n.targetUserId === userId),
     adminAuth: cleanAdminAuth,
     maintenanceMeta: obj.maintenanceMeta || {}

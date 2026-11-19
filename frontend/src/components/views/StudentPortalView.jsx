@@ -4,8 +4,60 @@ import { Bell, Sparkles, Calendar, Trash2, Lock, Clock } from '../common/Icons';
 import { TUTORING_PURPOSES, DAYS_TR, HOURS_LIST, MAX_WEEKLY_APPOINTMENTS, MAX_SLOT_QUOTA } from '../../constants';
 import { maskTcKimlik, formatSlotLabel } from '../../utils/helpers';
 
+const SHORT_SUBJECT_LABELS = {
+  turkce: 'TR',
+  sosyal: 'SOS',
+  matematik: 'MAT',
+  fen: 'FEN',
+  fizik: 'FİZ',
+  kimya: 'KİM',
+  biyoloji: 'BİY',
+  edebiyat: 'EDB',
+  tarih1: 'TAR-1',
+  cografya1: 'COĞ-1',
+  tarih2: 'TAR-2',
+  cografya2: 'COĞ-2',
+  felsefe: 'FEL',
+  din: 'DİN'
+};
+
+function getShortSubjectLabel(key, fallbackLabel = '') {
+  if (SHORT_SUBJECT_LABELS[key]) return SHORT_SUBJECT_LABELS[key];
+  return String(fallbackLabel || key).slice(0, 4).toLocaleUpperCase('tr-TR');
+}
+
+function parseDateOnlyMs(dateStr = '') {
+  if (!dateStr || typeof dateStr !== 'string') return 0;
+  const clean = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    const [y, m, d] = clean.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  }
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(clean)) {
+    const [d, m, y] = clean.split('.').map(Number);
+    return Date.UTC(y, m - 1, d);
+  }
+  const parsed = Date.parse(clean);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function compareExamsChronological(a, b) {
+  const dateDiff = parseDateOnlyMs(a.date) - parseDateOnlyMs(b.date);
+  if (dateDiff !== 0) return dateDiff;
+  return (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0);
+}
+
+function formatShortDate(dateStr = '') {
+  if (!dateStr) return '—';
+  if (dateStr.includes('-')) {
+    const [, m, d] = dateStr.split('-');
+    return `${d}.${m}`;
+  }
+  return dateStr;
+}
+
 export default function StudentPortalView({
-  currentStudent, staff, appointments, setAppointments, assignments, setAssignments, notifications, setNotifications, currentSystemDay, smartEveningWindowOpen, emitSocketEvent
+  currentStudent, staff, appointments, setAppointments, assignments, setAssignments, exams = [], notifications, setNotifications, currentSystemDay, smartEveningWindowOpen, emitSocketEvent
 }) {
   const [selectedTeacherId, setSelectedTeacherId] = useState(staff[0]?.id || '');
   const [sessionType, setSessionType] = useState('Konu Anlatımı');
@@ -16,11 +68,25 @@ export default function StudentPortalView({
   const [nowMs, setNowMs] = useState(Date.now());
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
 
+  // Deneme Karnesi & Ölçeklenebilir Liste State'leri
+  const [examTypeTab, setExamTypeTab] = useState('TYT');
+  const [chartRange, setChartRange] = useState('8'); // '8' | '16' | 'ALL'
+  const [examSearch, setExamSearch] = useState('');
+  const [examSort, setExamSort] = useState('newest'); // 'newest' | 'oldest' | 'highest' | 'lowest'
+  const [examViewMode, setExamViewMode] = useState('cards'); // 'cards' | 'table'
+  const [examPage, setExamPage] = useState(1);
+  const [hoveredExamIdx, setHoveredExamIdx] = useState(null);
+  const [expandedExamId, setExpandedExamId] = useState(null);
+
   useEffect(() => { setPreviewDayTab(currentSystemDay); }, [currentSystemDay]);
   useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    setExamPage(1);
+  }, [examTypeTab, examSearch, examSort, examViewMode]);
 
   const selectedTeacher = staff.find((t) => t.id === selectedTeacherId) || staff[0];
   const currentDayIndex = DAYS_TR.indexOf(currentSystemDay);
@@ -232,6 +298,181 @@ export default function StudentPortalView({
 
   const myHomeworks = assignments.filter((a) => a.studentId === currentStudent?.id);
 
+  // Öğrencinin Kendi Deneme Verileri (Kronolojik: Sınav Tarihine Göre Eski -> Yeni)
+  const myAllExams = useMemo(() => {
+    return (exams || [])
+      .filter((ex) => ex.studentId === currentStudent?.id)
+      .sort(compareExamsChronological);
+  }, [exams, currentStudent?.id]);
+
+  const myFilteredExams = useMemo(() => {
+    return myAllExams.filter((ex) => ex.examType === examTypeTab);
+  }, [myAllExams, examTypeTab]);
+
+  const examMaxPossible = examTypeTab === 'TYT' ? 120 : 80;
+
+  // Her denemenin bir önceki kronolojik sınava göre gerçek net farkı
+  const examChronoDiffMap = useMemo(() => {
+    const map = new Map();
+    myFilteredExams.forEach((ex, idx) => {
+      if (idx === 0) {
+        map.set(ex.id, null);
+      } else {
+        const diff = Number(((Number(ex.totalNet) || 0) - (Number(myFilteredExams[idx - 1].totalNet) || 0)).toFixed(2));
+        map.set(ex.id, diff);
+      }
+    });
+    return map;
+  }, [myFilteredExams]);
+
+  const myExamSummary = useMemo(() => {
+    if (myFilteredExams.length === 0) {
+      return { latest: 0, peak: 0, avg: 0, delta: 0, count: 0, accuracyPct: 0, avgWrongPenalty: 0 };
+    }
+    const nets = myFilteredExams.map((e) => Number(e.totalNet) || 0);
+    const latest = nets[nets.length - 1];
+    const prev = nets.length >= 2 ? nets[nets.length - 2] : latest;
+    const peak = Math.max(...nets);
+    const avg = Number((nets.reduce((a, b) => a + b, 0) / nets.length).toFixed(2));
+    const delta = Number((latest - prev).toFixed(2));
+
+    let totalD = 0;
+    let totalY = 0;
+    myFilteredExams.forEach((ex) => {
+      if (typeof ex.totalD === 'number' && typeof ex.totalY === 'number') {
+        totalD += ex.totalD;
+        totalY += ex.totalY;
+      } else {
+        Object.values(ex.sections || {}).forEach((s) => {
+          totalD += Number(s.d) || 0;
+          totalY += Number(s.y) || 0;
+        });
+      }
+    });
+
+    const accuracyPct = (totalD + totalY) > 0 ? Math.round((totalD / (totalD + totalY)) * 100) : 0;
+    const avgWrongPenalty = Number(((totalY / 4) / myFilteredExams.length).toFixed(2));
+
+    return { latest, peak, avg, delta, count: nets.length, accuracyPct, avgWrongPenalty };
+  }, [myFilteredExams]);
+
+  const mySubjectStats = useMemo(() => {
+    const map = {};
+    myFilteredExams.forEach((ex) => {
+      Object.entries(ex.sections || {}).forEach(([key, sec]) => {
+        if (!map[key]) {
+          map[key] = { key, label: sec.label || key, max: sec.max || 40, nets: [] };
+        }
+        map[key].nets.push(Number(sec.net) || 0);
+      });
+    });
+
+    return Object.values(map).map((item) => {
+      const avg = Number((item.nets.reduce((a, b) => a + b, 0) / item.nets.length).toFixed(2));
+      const latest = Number(item.nets[item.nets.length - 1].toFixed(2));
+      const prev = item.nets.length >= 2 ? item.nets[item.nets.length - 2] : latest;
+      const delta = Number((latest - prev).toFixed(2));
+      const pct = Math.max(0, Math.min(100, Math.round((avg / item.max) * 100)));
+      return { ...item, avg, latest, delta, pct };
+    });
+  }, [myFilteredExams]);
+
+  // Tablo görünümü için benzersiz ders sütunları
+  const tableSubjectColumns = useMemo(() => {
+    const colMap = new Map();
+    myFilteredExams.forEach((ex) => {
+      Object.entries(ex.sections || {}).forEach(([key, sec]) => {
+        if (!colMap.has(key)) {
+          colMap.set(key, { key, label: sec.label || key, max: sec.max || 40 });
+        }
+      });
+    });
+    return Array.from(colMap.values());
+  }, [myFilteredExams]);
+
+  // Arama + Sıralama + Sayfalama
+  const visibleExamsList = useMemo(() => {
+    const q = examSearch.trim().toLocaleLowerCase('tr-TR');
+    const filtered = !q
+      ? [...myFilteredExams]
+      : myFilteredExams.filter(
+          (ex) =>
+            (ex.examName || '').toLocaleLowerCase('tr-TR').includes(q) ||
+            (ex.date || '').includes(q)
+        );
+
+    if (examSort === 'newest') return filtered.reverse();
+    if (examSort === 'oldest') return filtered;
+    if (examSort === 'highest') return filtered.sort((a, b) => (Number(b.totalNet) || 0) - (Number(a.totalNet) || 0));
+    if (examSort === 'lowest') return filtered.sort((a, b) => (Number(a.totalNet) || 0) - (Number(b.totalNet) || 0));
+    return filtered.reverse();
+  }, [myFilteredExams, examSearch, examSort]);
+
+  const pageSize = examViewMode === 'table' ? 8 : 6;
+  const totalPages = Math.max(1, Math.ceil(visibleExamsList.length / pageSize));
+  const safePage = Math.min(examPage, totalPages);
+  const paginatedExams = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return visibleExamsList.slice(start, start + pageSize);
+  }, [visibleExamsList, safePage, pageSize]);
+
+  // Neon SVG Grafik Koordinatları (Seçilen aralığa göre dinamik + etiket seyreltme)
+  const svgW = 540;
+  const svgH = 165;
+  const padX = 26;
+  const padY = 18;
+
+  const recentExamsForChart = useMemo(() => {
+    if (chartRange === 'ALL') return myFilteredExams;
+    const limit = Number(chartRange) || 8;
+    return myFilteredExams.slice(-limit);
+  }, [myFilteredExams, chartRange]);
+
+  const studentChartCoords = useMemo(() => {
+    if (recentExamsForChart.length === 0) return { points: [], yMax: examMaxPossible, avgY: null };
+    const nets = recentExamsForChart.map((e) => Number(e.totalNet) || 0);
+    const rawMax = Math.max(...nets, 10);
+    const yMax = Math.min(examMaxPossible, Math.ceil(rawMax / 10) * 10 + 10);
+    const usableW = svgW - padX * 2;
+    const usableH = svgH - padY * 2;
+
+    const getY = (val) => {
+      const clamped = Math.max(0, Math.min(yMax, val));
+      return svgH - padY - (clamped / yMax) * usableH;
+    };
+
+    const points = recentExamsForChart.map((ex, i) => {
+      const x = recentExamsForChart.length === 1
+        ? svgW / 2
+        : padX + (i / (recentExamsForChart.length - 1)) * usableW;
+      const val = Number(ex.totalNet) || 0;
+      return {
+        x,
+        y: getY(val),
+        val,
+        name: ex.examName,
+        shortDate: formatShortDate(ex.date)
+      };
+    });
+
+    const avgY = myExamSummary.avg > 0 ? getY(myExamSummary.avg) : null;
+    return { points, yMax, avgY };
+  }, [recentExamsForChart, examMaxPossible, myExamSummary.avg]);
+
+  const labelStep = useMemo(() => {
+    const len = studentChartCoords.points.length;
+    if (len <= 8) return 1;
+    if (len <= 16) return 2;
+    return Math.ceil(len / 7);
+  }, [studentChartCoords.points.length]);
+
+  const studentPolyline = studentChartCoords.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const studentArea = studentChartCoords.points.length >= 2
+    ? `${studentChartCoords.points[0].x},${svgH - padY} ${studentPolyline} ${studentChartCoords.points[studentChartCoords.points.length - 1].x},${svgH - padY}`
+    : '';
+
+  const latestOverallExam = myAllExams.length ? myAllExams[myAllExams.length - 1] : null;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="relative p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-6">
@@ -261,6 +502,15 @@ export default function StudentPortalView({
               <span className="text-xs font-extrabold text-white">{myNotifications.length} Bildirim</span>
             </div>
           </button>
+
+          <a href="#deneme-karnem" className="px-4 py-3 rounded-2xl bg-[#0c1229] border border-cyan-500/30 hover:border-cyan-400 transition text-right">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block">
+              {latestOverallExam ? `Son ${latestOverallExam.examType} Netim` : 'Deneme Karnem'}
+            </span>
+            <div className="text-lg font-black font-mono text-white mt-0.5">
+              {latestOverallExam ? `${Number(latestOverallExam.totalNet).toFixed(2)} Net` : `${myAllExams.length} Kayıt`}
+            </div>
+          </a>
 
           <div className="px-5 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-right">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Haftalık Etüt Hakkı</span>
@@ -531,6 +781,492 @@ export default function StudentPortalView({
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* DENEME SINAVI KARNEM & GELİŞİM GRAFİĞİM (ÇOKLU DENEME OPTİMİZE) */}
+      <div id="deneme-karnem" className="p-6 rounded-3xl bg-gradient-to-br from-[#0c1229] via-[#0e1532] to-[#141133] border border-indigo-500/30 shadow-[0_0_35px_rgba(79,70,229,0.12)] space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-indigo-500/20 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-cyan-300">
+                KİŞİSEL AKADEMİK GELİŞİM ANALİZİ
+              </span>
+            </div>
+            <h2 className="text-xl font-black text-white mt-0.5">Deneme Sınavı Karnem &amp; Net Grafiğim</h2>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#070b1a] border border-indigo-500/25">
+            {['TYT', 'AYT'].map((type) => {
+              const count = myAllExams.filter((e) => e.examType === type).length;
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    setExamTypeTab(type);
+                    setHoveredExamIdx(null);
+                    setExpandedExamId(null);
+                  }}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-black transition ${
+                    examTypeTab === type
+                      ? 'bg-gradient-to-r from-cyan-400 to-indigo-500 text-slate-950 shadow-[0_0_14px_rgba(34,211,238,0.4)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {type} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 4 Özet KPI Kartı (İsabet ve Yanlış Kaybı Dahil) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">SON {examTypeTab} NETİM</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-black font-mono text-white">{myExamSummary.latest.toFixed(2)}</span>
+              {myExamSummary.count >= 2 && (
+                <span className={`text-xs font-mono font-extrabold ${myExamSummary.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {myExamSummary.delta >= 0 ? `+${myExamSummary.delta}` : myExamSummary.delta}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">Maksimum {examMaxPossible} Net</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">EN YÜKSEK (ZİRVE)</span>
+            <span className="text-2xl font-black font-mono text-cyan-300 mt-1 block">{myExamSummary.peak.toFixed(2)}</span>
+            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">
+              İsabet Oranı: <strong className="text-cyan-300">%{myExamSummary.accuracyPct}</strong>
+            </span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">GENEL ORTALAMA</span>
+            <span className="text-2xl font-black font-mono text-fuchsia-300 mt-1 block">{myExamSummary.avg.toFixed(2)}</span>
+            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">
+              Yanlış Kaybı: <strong className="text-rose-400">-{myExamSummary.avgWrongPenalty}</strong> Net/Sınav
+            </span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">GİRİLEN {examTypeTab}</span>
+            <span className="text-2xl font-black font-mono text-indigo-300 mt-1 block">{myExamSummary.count} Sınav</span>
+            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">Tüm Dönem Arşivi</span>
+          </div>
+        </div>
+
+        {myFilteredExams.length === 0 ? (
+          <div className="p-10 rounded-2xl bg-[#070b1a] border border-indigo-500/15 text-center space-y-1.5">
+            <p className="text-sm font-bold text-slate-300">Henüz sisteme işlenmiş {examTypeTab} deneme sonucunuz bulunmuyor.</p>
+            <p className="text-xs text-slate-500">Yönetim tarafından deneme sonuçlarınız girildiğinde gelişim grafiğiniz burada otomatik oluşacaktır.</p>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-12 gap-5">
+            {/* Sol: Neon Gelişim Eğrisi (Aralık Seçici + Ortalama Çizgisi) */}
+            <div className="lg:col-span-7 p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20 flex flex-col justify-between space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-cyan-300">
+                  {examTypeTab} Net Gelişim Eğrim ({chartRange === 'ALL' ? `Tüm ${myFilteredExams.length}` : `Son ${recentExamsForChart.length}`} Sınav)
+                </span>
+                <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-indigo-500/20">
+                  {[
+                    { id: '8', label: 'Son 8' },
+                    { id: '16', label: 'Son 16' },
+                    { id: 'ALL', label: 'Tümü' }
+                  ].map((rng) => (
+                    <button
+                      key={rng.id}
+                      type="button"
+                      onClick={() => {
+                        setChartRange(rng.id);
+                        setHoveredExamIdx(null);
+                      }}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition ${
+                        chartRange === rng.id
+                          ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-500/40'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {rng.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative pt-2">
+                <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-[175px] overflow-visible">
+                  <defs>
+                    <linearGradient id="stCyanArea" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.32" />
+                      <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id="stCyanStroke" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#22d3ee" />
+                      <stop offset="50%" stopColor="#818cf8" />
+                      <stop offset="100%" stopColor="#e879f9" />
+                    </linearGradient>
+                  </defs>
+
+                  {[0.25, 0.5, 0.75, 1].map((ratio) => {
+                    const y = svgH - padY - ratio * (svgH - padY * 2);
+                    return (
+                      <g key={ratio}>
+                        <line x1={padX} y1={y} x2={svgW - padX} y2={y} stroke="rgba(148,163,184,0.09)" strokeDasharray="3 4" />
+                        <text x="2" y={y + 3} fill="rgba(148,163,184,0.5)" fontSize="9" fontFamily="monospace">
+                          {Math.round(studentChartCoords.yMax * ratio)}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Ortalama Referans Çizgisi */}
+                  {studentChartCoords.avgY !== null && studentChartCoords.points.length >= 2 && (
+                    <g>
+                      <line
+                        x1={padX}
+                        y1={studentChartCoords.avgY}
+                        x2={svgW - padX}
+                        y2={studentChartCoords.avgY}
+                        stroke="rgba(232,121,249,0.45)"
+                        strokeWidth="1.2"
+                        strokeDasharray="4 4"
+                      />
+                      <text
+                        x={svgW - padX}
+                        y={studentChartCoords.avgY - 4}
+                        textAnchor="end"
+                        fill="rgba(232,121,249,0.8)"
+                        fontSize="8.5"
+                        fontFamily="monospace"
+                      >
+                        Ort: {myExamSummary.avg.toFixed(1)}
+                      </text>
+                    </g>
+                  )}
+
+                  {studentArea && <polygon points={studentArea} fill="url(#stCyanArea)" />}
+
+                  {studentChartCoords.points.length >= 2 && (
+                    <polyline
+                      fill="none"
+                      stroke="url(#stCyanStroke)"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={studentPolyline}
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(34,211,238,0.6))' }}
+                    />
+                  )}
+
+                  {studentChartCoords.points.map((pt, idx) => {
+                    const isFirstOrLast = idx === 0 || idx === studentChartCoords.points.length - 1;
+                    const showLabel = isFirstOrLast || idx % labelStep === 0;
+                    const dotRadius = studentChartCoords.points.length > 16 ? 3 : 4.2;
+
+                    return (
+                      <g
+                        key={idx}
+                        onMouseEnter={() => setHoveredExamIdx(idx)}
+                        onMouseLeave={() => setHoveredExamIdx(null)}
+                        className="cursor-pointer"
+                      >
+                        <circle cx={pt.x} cy={pt.y} r="10" fill="transparent" />
+                        <circle
+                          cx={pt.x}
+                          cy={pt.y}
+                          r={hoveredExamIdx === idx ? '6' : dotRadius}
+                          fill="#ffffff"
+                          stroke="#22d3ee"
+                          strokeWidth="2.2"
+                          style={{ filter: 'drop-shadow(0 0 8px #22d3ee)' }}
+                        />
+                        {showLabel && (
+                          <>
+                            <text x={pt.x} y={pt.y - 9} textAnchor="middle" fill="#67e8f9" fontSize="9" fontFamily="monospace" fontWeight="bold">
+                              {pt.val.toFixed(1)}
+                            </text>
+                            <text x={pt.x} y={svgH - 2} textAnchor="middle" fill="rgba(148,163,184,0.7)" fontSize="8.5" fontFamily="monospace">
+                              {pt.shortDate}
+                            </text>
+                          </>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {hoveredExamIdx !== null && recentExamsForChart[hoveredExamIdx] && (
+                  <div className="absolute top-1 right-2 px-3 py-2 rounded-xl bg-slate-950/95 border border-cyan-500/40 text-[11px] shadow-xl pointer-events-none z-10">
+                    <div className="font-extrabold text-white">{recentExamsForChart[hoveredExamIdx].examName}</div>
+                    <div className="font-mono text-cyan-300 font-bold mt-0.5">
+                      {Number(recentExamsForChart[hoveredExamIdx].totalNet).toFixed(2)} Net • {recentExamsForChart[hoveredExamIdx].date}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sağ: Branş Ortalamaları */}
+            <div className="lg:col-span-5 p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20 space-y-3">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-fuchsia-300 block">
+                Branş Bazlı Ortalama Performansım
+              </span>
+              <div className="space-y-3 max-h-[210px] overflow-y-auto pr-1">
+                {mySubjectStats.map((sec) => (
+                  <div key={sec.key} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-200">
+                        {sec.label} <span className="text-[10px] font-mono text-slate-500">({sec.max})</span>
+                      </span>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="font-black text-white">{sec.avg.toFixed(2)} Net</span>
+                        {myFilteredExams.length >= 2 && (
+                          <span className={`text-[10px] font-bold ${sec.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {sec.delta >= 0 ? `+${sec.delta}` : sec.delta}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-900 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 transition-all duration-500"
+                        style={{ width: `${sec.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Alt: Ölçeklenebilir Deneme Arşivi (Arama + Sıralama + Kart/Tablo + Sayfalama) */}
+            <div className="lg:col-span-12 space-y-3.5 pt-2 border-t border-indigo-500/15">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300 block">
+                    {examTypeTab} Deneme Arşivim ({visibleExamsList.length} / {myFilteredExams.length})
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Kart görünümünde ders detaylarını açmak için denemeye tıklayın, hızlı karşılaştırma için Tablo moduna geçin.
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Arama */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Deneme adı veya tarih ara..."
+                      value={examSearch}
+                      onChange={(e) => setExamSearch(e.target.value)}
+                      className="w-48 sm:w-56 pl-3 pr-7 py-1.5 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                    />
+                    {examSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setExamSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-[11px]"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sıralama */}
+                  <select
+                    value={examSort}
+                    onChange={(e) => setExamSort(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs font-bold text-cyan-200 focus:outline-none"
+                  >
+                    <option value="newest">En Yeni Tarih</option>
+                    <option value="oldest">En Eski Tarih</option>
+                    <option value="highest">En Yüksek Net</option>
+                    <option value="lowest">En Düşük Net</option>
+                  </select>
+
+                  {/* Kart / Kompakt Tablo Geçişi */}
+                  <div className="flex p-0.5 rounded-xl bg-[#070b1a] border border-indigo-500/25">
+                    {[
+                      { id: 'cards', label: 'Kartlar' },
+                      { id: 'table', label: 'Kompakt Tablo' }
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setExamViewMode(m.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                          examViewMode === m.id
+                            ? 'bg-indigo-500/30 text-white border border-indigo-400/40'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {visibleExamsList.length === 0 ? (
+                <div className="p-6 rounded-2xl bg-[#070b1a] border border-indigo-500/15 text-center text-xs text-slate-400">
+                  Arama kriterine uygun deneme bulunamadı.
+                </div>
+              ) : examViewMode === 'cards' ? (
+                /* KART GÖRÜNÜMÜ (Sayfalanmış + Akordeon) */
+                <div className="grid md:grid-cols-2 gap-3">
+                  {paginatedExams.map((ex) => {
+                    const isExpanded = expandedExamId === ex.id;
+                    const chronoDiff = examChronoDiffMap.get(ex.id);
+                    return (
+                      <div key={ex.id} className={`rounded-2xl bg-[#070b1a] border transition overflow-hidden ${isExpanded ? 'border-cyan-500/45 shadow-[0_0_20px_rgba(34,211,238,0.08)]' : 'border-indigo-500/20'}`}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedExamId(isExpanded ? null : ex.id)}
+                          className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#0d1430] transition text-left"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-sm font-extrabold text-white truncate">{ex.examName}</div>
+                            <div className="text-[11px] font-mono text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
+                              <span>{ex.date}</span>
+                              {ex.aytTrack && <span className="text-fuchsia-300 font-bold">• {ex.aytTrack}</span>}
+                              {typeof ex.totalD === 'number' && (
+                                <span>
+                                  • <strong className="text-emerald-400">{ex.totalD}D</strong> / <strong className="text-rose-400">{ex.totalY}Y</strong> / {ex.totalB}B
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {chronoDiff !== null && chronoDiff !== undefined && (
+                              <span className={`text-[11px] font-mono font-extrabold ${chronoDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {chronoDiff >= 0 ? `+${chronoDiff}` : chronoDiff}
+                              </span>
+                            )}
+                            <div className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-500/15 to-indigo-500/15 border border-cyan-500/35 font-mono text-xs font-black text-cyan-300">
+                              {Number(ex.totalNet).toFixed(2)} Net
+                            </div>
+                            <span className={`text-slate-400 text-xs transition-transform ${isExpanded ? 'rotate-180 text-cyan-300' : ''}`}>▾</span>
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="px-4 pb-3.5 pt-2.5 border-t border-indigo-500/15 grid grid-cols-2 gap-2 bg-[#050814]/70">
+                            {Object.entries(ex.sections || {}).map(([secKey, secVal]) => (
+                              <div key={secKey} className="px-2.5 py-2 rounded-xl bg-slate-950/90 border border-slate-800/80 flex items-center justify-between text-xs">
+                                <div className="min-w-0">
+                                  <span className="font-bold text-slate-200 block truncate capitalize">{secVal.label || secKey}</span>
+                                  <span className="text-[10px] font-mono text-slate-400">
+                                    <strong className="text-emerald-400">{secVal.d ?? 0}D</strong> • <strong className="text-rose-400">{secVal.y ?? 0}Y</strong>
+                                    {typeof secVal.b === 'number' ? ` • ${secVal.b}B` : ''}
+                                  </span>
+                                </div>
+                                <span className="font-mono font-black text-cyan-300 ml-2 shrink-0">
+                                  {Number(secVal.net || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* KOMPAKT TABLO GÖRÜNÜMÜ (Çoklu Denemeleri Tek Bakışta Kıyaslama) */
+                <div className="overflow-x-auto rounded-2xl border border-indigo-500/20 bg-[#070b1a]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-indigo-500/20 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 bg-[#0a1026]">
+                        <th className="px-3.5 py-2.5 min-w-[180px]">Deneme &amp; Tarih</th>
+                        {tableSubjectColumns.map((col) => (
+                          <th key={col.key} className="px-2.5 py-2.5 text-center">
+                            {getShortSubjectLabel(col.key, col.label)}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2.5 text-center">D/Y/B</th>
+                        <th className="px-3 py-2.5 text-right">Net</th>
+                        <th className="px-3 py-2.5 text-right">Fark</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-indigo-500/10">
+                      {paginatedExams.map((ex) => {
+                        const chronoDiff = examChronoDiffMap.get(ex.id);
+                        return (
+                          <tr key={ex.id} className="hover:bg-[#0e1633] transition">
+                            <td className="px-3.5 py-2.5">
+                              <div className="font-bold text-white truncate max-w-[230px]">{ex.examName}</div>
+                              <div className="text-[10px] font-mono text-slate-400">{ex.date}</div>
+                            </td>
+                            {tableSubjectColumns.map((col) => {
+                              const sec = ex.sections?.[col.key];
+                              if (!sec) {
+                                return <td key={col.key} className="px-2.5 py-2.5 text-center text-slate-600 font-mono">—</td>;
+                              }
+                              return (
+                                <td key={col.key} className="px-2.5 py-2.5 text-center font-mono">
+                                  <div className="font-black text-cyan-300">{Number(sec.net || 0).toFixed(2)}</div>
+                                  <div className="text-[9px] text-slate-500">{sec.d ?? 0}D/{sec.y ?? 0}Y</div>
+                                </td>
+                              );
+                            })}
+                            <td className="px-3 py-2.5 text-center font-mono text-[10px] whitespace-nowrap">
+                              <span className="text-emerald-400 font-bold">{ex.totalD ?? 0}</span>/
+                              <span className="text-rose-400 font-bold">{ex.totalY ?? 0}</span>/
+                              <span className="text-slate-400">{ex.totalB ?? 0}</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono font-black text-white whitespace-nowrap">
+                              {Number(ex.totalNet).toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-[11px] font-extrabold whitespace-nowrap">
+                              {chronoDiff === null || chronoDiff === undefined ? (
+                                <span className="text-slate-500">—</span>
+                              ) : (
+                                <span className={chronoDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                  {chronoDiff >= 0 ? `+${chronoDiff}` : chronoDiff}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Sayfalama Çubuğu (Yalnızca 1 sayfadan fazla deneme varsa görünür) */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    Sayfa <strong className="text-white">{safePage}</strong> / {totalPages} • Toplam {visibleExamsList.length} deneme
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={safePage <= 1}
+                      onClick={() => setExamPage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 rounded-xl bg-[#070b1a] hover:bg-[#111936] disabled:opacity-35 border border-indigo-500/25 text-slate-200 font-bold transition"
+                    >
+                      ← Önceki
+                    </button>
+                    <button
+                      type="button"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setExamPage((p) => Math.min(totalPages, p + 1))}
+                      className="px-3 py-1.5 rounded-xl bg-[#070b1a] hover:bg-[#111936] disabled:opacity-35 border border-indigo-500/25 text-slate-200 font-bold transition"
+                    >
+                      Sonraki →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

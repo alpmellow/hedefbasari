@@ -8,12 +8,25 @@ const router = express.Router();
 
 router.post('/login', loginLimiter, async (req, res) => {
   try {
-    const { tier, tcNo, username, secret } = req.body;
+    const { tier, tcNo, username, secret } = req.body || {};
+    const cleanSecret = typeof secret === 'string' || typeof secret === 'number' ? String(secret).trim() : '';
+
+    if (!cleanSecret) {
+      return res.status(400).json({ error: 'Giriş şifresi veya güvenlik anahtarı boş bırakılamaz.' });
+    }
+
     const state = await ensureSeedState();
 
     if (tier === 'student') {
+      const cleanTc = typeof tcNo === 'string' || typeof tcNo === 'number' ? String(tcNo).trim() : '';
+      if (!/^\d{11}$/.test(cleanTc)) {
+        return res.status(401).json({ error: 'Hatalı 11 Haneli Öğrenci TC No veya 6 Haneli Sayısal Şifre.' });
+      }
       const found = (state.students || []).find(
-        (s) => String(s.tcNo).trim() === String(tcNo).trim() && String(s.pin).trim() === String(secret).trim()
+        (s) =>
+          String(s.tcNo || '').trim() === cleanTc &&
+          String(s.pin || '').trim().length > 0 &&
+          String(s.pin).trim() === cleanSecret
       );
       if (!found) {
         return res.status(401).json({ error: 'Hatalı 11 Haneli Öğrenci TC No veya 6 Haneli Sayısal Şifre.' });
@@ -28,8 +41,15 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 
     if (tier === 'teacher') {
+      const cleanTc = typeof tcNo === 'string' || typeof tcNo === 'number' ? String(tcNo).trim() : '';
+      if (!/^\d{11}$/.test(cleanTc)) {
+        return res.status(401).json({ error: 'Hatalı 11 Haneli Öğretmen TC No veya 8 Haneli Güvenlik Anahtarı.' });
+      }
       const found = (state.staff || []).find(
-        (t) => String(t.tcNo).trim() === String(tcNo).trim() && String(t.securityKey).trim() === String(secret).trim()
+        (t) =>
+          String(t.tcNo || '').trim() === cleanTc &&
+          String(t.securityKey || '').trim().length > 0 &&
+          String(t.securityKey).trim() === cleanSecret
       );
       if (!found) {
         return res.status(401).json({ error: 'Hatalı 11 Haneli Öğretmen TC No veya 8 Haneli Güvenlik Anahtarı.' });
@@ -40,9 +60,11 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 
     if (tier === 'admin') {
+      const cleanUser = typeof username === 'string' ? username.trim() : '';
       const activeUser = state.adminAuth?.username || 'hedef_admin';
-      const isUserMatch = String(username).trim() === activeUser;
-      const isPassMatch = await bcrypt.compare(String(secret || ''), state.adminAuth?.passwordHash || '');
+      const activeHash = state.adminAuth?.passwordHash || '';
+      const isUserMatch = cleanUser.length > 0 && cleanUser === activeUser;
+      const isPassMatch = activeHash ? await bcrypt.compare(cleanSecret, activeHash) : false;
 
       if (!isUserMatch || !isPassMatch) {
         return res.status(401).json({ error: 'Hatalı Yönetici kullanıcı adı veya şifresi.' });

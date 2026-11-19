@@ -10,6 +10,11 @@ import ThreeTierLoginModal from './components/modals/ThreeTierLoginModal';
 import DevOpsArchitectureModal from './components/modals/DevOpsArchitectureModal';
 import { apiFetch, getSessionToken } from './utils/api';
 
+const DEFAULT_MAINTENANCE_META = {
+  lastDailyPurgeLabel: 'Bugün 00:00 (Otonom)',
+  lastWeeklyResetLabel: 'Pazartesi 00:00 (Otonom)'
+};
+
 export default function App() {
   useEffect(() => {
     document.title = 'HedefBaşarı | Özel Öğretim Kursu & Etüt Otomasyonu';
@@ -28,16 +33,15 @@ export default function App() {
   const [students, setStudents] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [exams, setExams] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [adminAuth, setAdminAuth] = useState({ username: 'hedef_admin', photoUrl: '' });
-  const [maintenanceMeta, setMaintenanceMeta] = useState({
-    lastDailyPurgeLabel: 'Bugün 00:00 (Otonom)',
-    lastWeeklyResetLabel: 'Pazartesi 00:00 (Otonom)'
-  });
+  const [maintenanceMeta, setMaintenanceMeta] = useState(DEFAULT_MAINTENANCE_META);
   const [publicStats, setPublicStats] = useState({ studentCount: 4, staffCount: 4, appointmentCount: 1 });
 
   const isHydratedRef = useRef(false);
   const isRemoteUpdateRef = useRef(false);
+  const lastSyncedPayloadRef = useRef('');
   const socketRef = useRef(null);
 
   const getRealTodayName = () => {
@@ -72,12 +76,24 @@ export default function App() {
 
   const MAX_NOTIFICATIONS_PER_USER = 10;
 
+  const resetPrivateState = useCallback(() => {
+    isHydratedRef.current = false;
+    isRemoteUpdateRef.current = true;
+    lastSyncedPayloadRef.current = '';
+    setStudents([]);
+    setAppointments([]);
+    setAssignments([]);
+    setExams([]);
+    setNotifications([]);
+  }, []);
+
   const handleLogout = useCallback(() => {
+    resetPrivateState();
     setCurrentUser(null);
     setAuthToken(null);
     setActiveView('landing');
     sessionStorage.removeItem('hb_active_session');
-  }, []);
+  }, [resetPrivateState]);
 
   useEffect(() => {
     window.addEventListener('hb:unauthorized', handleLogout);
@@ -87,7 +103,8 @@ export default function App() {
   // Vitrin veya Rol Bazlı State Çekme Fonksiyonu
   const fetchSystemData = useCallback(async () => {
     try {
-      if (!getSessionToken() || activeView === 'landing') {
+      const token = getSessionToken();
+      if (!token || activeView === 'landing') {
         const res = await fetch('/api/system/public');
         const data = await res.json();
         if (data && !data.error) {
@@ -100,66 +117,129 @@ export default function App() {
       }
 
       const res = await apiFetch('/api/system/state');
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (!res.ok) return;
+
       const data = await res.json();
       if (data && !data.error) {
+        const nextStaff = Array.isArray(data.staff) ? data.staff : [];
+        const nextStudents = Array.isArray(data.students) ? data.students : [];
+        const nextAppointments = Array.isArray(data.appointments) ? data.appointments : [];
+        const nextAssignments = Array.isArray(data.assignments) ? data.assignments : [];
+        const nextExams = Array.isArray(data.exams) ? data.exams : [];
+        const nextNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+        const nextMaintenanceMeta = data.maintenanceMeta || DEFAULT_MAINTENANCE_META;
+
         isRemoteUpdateRef.current = true;
-        if (Array.isArray(data.staff)) setStaff(data.staff);
-        if (Array.isArray(data.students)) setStudents(data.students);
-        if (Array.isArray(data.appointments)) setAppointments(data.appointments);
-        if (Array.isArray(data.assignments)) setAssignments(data.assignments);
-        if (Array.isArray(data.notifications)) setNotifications(data.notifications);
+        lastSyncedPayloadRef.current = JSON.stringify({
+          staff: nextStaff,
+          students: nextStudents,
+          appointments: nextAppointments,
+          assignments: nextAssignments,
+          exams: nextExams,
+          notifications: nextNotifications,
+          maintenanceMeta: nextMaintenanceMeta
+        });
+
+        setStaff(nextStaff);
+        setStudents(nextStudents);
+        setAppointments(nextAppointments);
+        setAssignments(nextAssignments);
+        setExams(nextExams);
+        setNotifications(nextNotifications);
         if (data.adminAuth) setAdminAuth(data.adminAuth);
-        if (data.maintenanceMeta) setMaintenanceMeta(data.maintenanceMeta);
+        setMaintenanceMeta(nextMaintenanceMeta);
+
         isHydratedRef.current = true;
-        setTimeout(() => { isRemoteUpdateRef.current = false; }, 100);
+        setTimeout(() => { isRemoteUpdateRef.current = false; }, 150);
       }
     } catch {
-      isHydratedRef.current = true;
+      // Ağ hatasında isHydratedRef kesinlikle true yapılmaz (boş verinin DB'yi ezmesini engeller)
     }
-  }, [activeView]);
+  }, [activeView, handleLogout]);
+
+  const fetchSystemDataRef = useRef(fetchSystemData);
+  useEffect(() => {
+    fetchSystemDataRef.current = fetchSystemData;
+  }, [fetchSystemData]);
 
   useEffect(() => {
     fetchSystemData();
   }, [fetchSystemData, authToken]);
 
+  // JWT Kimlik Doğrulamalı Canlı Socket.io Bağlantısı
   useEffect(() => {
-    const socket = io('/', { path: '/socket.io', transports: ['websocket', 'polling'] });
+    if (!authToken) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      return;
+    }
+
+    const socket = io('/', {
+      path: '/socket.io',
+      auth: { token: authToken },
+      transports: ['websocket', 'polling']
+    });
     socketRef.current = socket;
 
     socket.on('system:refresh_required', (payload) => {
       if (payload?.senderSocketId && payload.senderSocketId === socket.id) return;
-      fetchSystemData();
+      fetchSystemDataRef.current();
     });
 
     return () => {
       socket.disconnect();
+      socketRef.current = null;
     };
-  }, [fetchSystemData]);
+  }, [authToken]);
 
-  // Yerel değişiklikleri yalnızca oturum açıkken sunucuya senkronize et
+  // Silinen öğretmen/öğrenci oturumunu otomatik kapat
+  useEffect(() => {
+    if (!isHydratedRef.current || !currentUser) return;
+    if (activeView === 'teacher' && staff.length > 0 && !staff.some((t) => t.id === currentUser.id)) {
+      handleLogout();
+    } else if (activeView === 'student' && students.length > 0 && !students.some((s) => s.id === currentUser.id)) {
+      handleLogout();
+    }
+  }, [activeView, currentUser, staff, students, handleLogout]);
+
+  // Sadece gerçek yerel değişiklikleri sunucuya senkronize et
   useEffect(() => {
     if (!isHydratedRef.current || isRemoteUpdateRef.current || activeView === 'landing' || !authToken) return;
 
+    const payloadObj = {
+      staff,
+      students,
+      appointments,
+      assignments,
+      exams,
+      notifications,
+      maintenanceMeta
+    };
+    const payloadStr = JSON.stringify(payloadObj);
+
+    if (payloadStr === lastSyncedPayloadRef.current) return;
+
     const timer = setTimeout(() => {
+      if (!isHydratedRef.current || isRemoteUpdateRef.current) return;
+      lastSyncedPayloadRef.current = payloadStr;
       apiFetch('/api/system/sync', {
         method: 'POST',
         body: JSON.stringify({
-          staff,
-          students,
-          appointments,
-          assignments,
-          notifications,
-          maintenanceMeta,
+          ...payloadObj,
           senderSocketId: socketRef.current?.id || null
         })
       }).catch(() => {});
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [staff, students, appointments, assignments, notifications, maintenanceMeta, activeView, authToken]);
+  }, [staff, students, appointments, assignments, exams, notifications, maintenanceMeta, activeView, authToken]);
 
-  // Yalnızca UI gün ve 20:00 penceresi kontrolü (Veri silme cron'u sunucudadır)
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSystemDay(getRealTodayName());
@@ -201,6 +281,7 @@ export default function App() {
   };
 
   const handleLoginSuccess = (role, userObj, token) => {
+    resetPrivateState();
     setIsLoginModalOpen(false);
     const nextUser = { ...userObj, role };
     sessionStorage.setItem('hb_active_session', JSON.stringify({ activeView: role, currentUser: nextUser, token }));
@@ -219,27 +300,28 @@ export default function App() {
     fetchSystemData();
   };
 
+  const activeTeacher = useMemo(
+    () => staff.find((item) => item.id === currentUser?.id) || currentUser || null,
+    [staff, currentUser]
+  );
+
+  const activeStudent = useMemo(
+    () => students.find((item) => item.id === currentUser?.id) || currentUser || null,
+    [students, currentUser]
+  );
+
   const activeHeaderAvatar = useMemo(() => {
     if (activeView === 'admin') return adminAuth.photoUrl || '';
-    if (activeView === 'teacher') {
-      const t = staff.find((item) => item.id === currentUser?.id) || staff[0];
-      return t?.photoUrl || '';
-    }
+    if (activeView === 'teacher') return activeTeacher?.photoUrl || '';
     return '';
-  }, [activeView, adminAuth.photoUrl, staff, currentUser]);
+  }, [activeView, adminAuth.photoUrl, activeTeacher]);
 
   const activeHeaderName = useMemo(() => {
     if (activeView === 'admin') return `Yönetici (${adminAuth.username})`;
-    if (activeView === 'teacher') {
-      const t = staff.find((item) => item.id === currentUser?.id) || staff[0];
-      return t?.fullName || currentUser?.fullName || 'Eğitmen';
-    }
-    if (activeView === 'student') {
-      const s = students.find((item) => item.id === currentUser?.id) || currentUser;
-      return s?.fullName || 'Öğrenci';
-    }
+    if (activeView === 'teacher') return activeTeacher?.fullName || 'Eğitmen';
+    if (activeView === 'student') return activeStudent?.fullName || 'Öğrenci';
     return '';
-  }, [activeView, adminAuth.username, staff, students, currentUser]);
+  }, [activeView, adminAuth.username, activeTeacher, activeStudent]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
@@ -268,6 +350,7 @@ export default function App() {
           students={students} setStudents={setStudents}
           appointments={appointments} setAppointments={setAppointments}
           assignments={assignments} setAssignments={setAssignments}
+          exams={exams} setExams={setExams}
           adminAuth={adminAuth} setAdminAuth={setAdminAuth}
           lastDailyPurgeLabel={maintenanceMeta.lastDailyPurgeLabel}
           onTriggerDailyPurge={handleAdminDailyPurge}
@@ -278,9 +361,9 @@ export default function App() {
         />
       )}
 
-      {activeView === 'teacher' && (
+      {activeView === 'teacher' && activeTeacher && (
         <TeacherPortalView
-          currentTeacher={staff.find((t) => t.id === currentUser?.id) || staff[0]}
+          currentTeacher={activeTeacher}
           students={students}
           appointments={appointments} setAppointments={setAppointments}
           assignments={assignments} setAssignments={setAssignments}
@@ -289,12 +372,13 @@ export default function App() {
         />
       )}
 
-      {activeView === 'student' && (
+      {activeView === 'student' && activeStudent && (
         <StudentPortalView
-          currentStudent={students.find((s) => s.id === currentUser?.id) || currentUser || students[0]}
+          currentStudent={activeStudent}
           staff={staff}
           appointments={appointments} setAppointments={setAppointments}
           assignments={assignments} setAssignments={setAssignments}
+          exams={exams}
           notifications={notifications} setNotifications={setNotifications}
           currentSystemDay={currentSystemDay}
           smartEveningWindowOpen={smartEveningWindowOpen}

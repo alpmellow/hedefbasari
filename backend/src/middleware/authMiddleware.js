@@ -7,7 +7,7 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
 }
 
 function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '12h', algorithm: 'HS256' });
 }
 
 function verifyToken(req, res, next) {
@@ -18,7 +18,7 @@ function verifyToken(req, res, next) {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     req.user = decoded;
     next();
   } catch (err) {
