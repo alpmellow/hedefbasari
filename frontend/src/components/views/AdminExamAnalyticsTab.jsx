@@ -78,7 +78,7 @@ function DonutGauge({ percent, label, sublabel, gradId, colorStart, colorEnd }) 
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-24 h-24">
+      <div className="relative w-20 h-20 sm:w-24 sm:h-24">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
           <defs>
             <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -101,7 +101,7 @@ function DonutGauge({ percent, label, sublabel, gradId, colorStart, colorEnd }) 
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg font-black text-white font-mono">{safePct}%</span>
+          <span className="text-base sm:text-lg font-black text-white font-mono">{safePct}%</span>
         </div>
       </div>
       <span className="text-[11px] font-extrabold tracking-wider uppercase text-slate-200 mt-1.5">{label}</span>
@@ -131,7 +131,7 @@ function MiniSparkline({ values = [], color = '#22d3ee', gradId = 'spark1' }) {
   const areaPoints = `0,${height} ${polylinePoints} ${width},${height}`;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-7 overflow-visible mt-2">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-6 sm:h-7 overflow-visible mt-1.5 sm:mt-2">
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.35" />
@@ -199,7 +199,6 @@ export default function AdminExamAnalyticsTab({
     return typeExams.filter((ex) => poolIds.has(ex.studentId));
   }, [typeExams, selectedStudent, filteredStudentsPool]);
 
-  // Çift Çizgili Grafik Verisi
   const chartSeries = useMemo(() => {
     const uniqueExamBuckets = [];
     const seen = new Map();
@@ -276,7 +275,6 @@ export default function AdminExamAnalyticsTab({
     };
   }, [sortedExams, selectedStudent, filteredStudentsPool]);
 
-  // Ders Bazlı Analiz (Ortalama D/Y/B + Net + Değişim)
   const subjectBreakdown = useMemo(() => {
     const map = {};
     scopedTypeExams.forEach((ex) => {
@@ -332,7 +330,6 @@ export default function AdminExamAnalyticsTab({
     });
   }, [scopedTypeExams]);
 
-  // İsabet Oranı, Yanlış Maliyeti (Net Kaybı) & Kurum Sıralaması
   const precisionAnalytics = useMemo(() => {
     if (scopedTypeExams.length === 0) {
       return {
@@ -411,7 +408,6 @@ export default function AdminExamAnalyticsTab({
     };
   }, [scopedTypeExams, maxPossibleForType, graphStats.avg, subjectBreakdown, selectedStudent, typeExams]);
 
-  // Kurum Modu için Sınav Bazlı Özet Tablosu (Satır 3)
   const institutionExamSummaryRows = useMemo(() => {
     const groups = new Map();
     scopedTypeExams.forEach((ex) => {
@@ -461,7 +457,6 @@ export default function AdminExamAnalyticsTab({
       .reverse();
   }, [scopedTypeExams]);
 
-  // Matris Sütun Başlıkları (Sınavlarda bulunan tüm benzersiz dersler)
   const matrixSubjectColumns = useMemo(() => {
     const colMap = new Map();
     scopedTypeExams.forEach((ex) => {
@@ -657,7 +652,6 @@ export default function AdminExamAnalyticsTab({
     setTimeout(() => setNotifiedStudentId(null), 2500);
   };
 
-  // Veli & Öğrenci Yazdırılabilir PDF Karne Çıktısı
   const handlePrintStudentReportCard = () => {
     if (!selectedStudent) return;
     const printWin = window.open('', '_blank', 'width=980,height=760');
@@ -856,41 +850,41 @@ export default function AdminExamAnalyticsTab({
   const totalSubjectAvgSum = Math.max(0.1, subjectBreakdown.reduce((acc, s) => acc + Math.max(0, s.avg), 0));
 
   return (
-    <div className="space-y-5">
-      {/* ÜST KONTROL ŞERİDİ */}
-      <div className="p-4 sm:px-6 rounded-3xl bg-gradient-to-r from-[#0d1430] via-[#10183a] to-[#161238] border border-indigo-500/25 shadow-[0_0_35px_rgba(79,70,229,0.12)] flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#e879f9]" />
+    <div className="space-y-4 sm:space-y-5">
+      {/* ÜST KONTROL ŞERİDİ (Mobil 2'li Grid + Masaüstü Tek Satır) */}
+      <div className="p-4 sm:px-6 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#0d1430] via-[#10183a] to-[#161238] border border-indigo-500/25 shadow-[0_0_35px_rgba(79,70,229,0.12)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5 sm:gap-4">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="flex items-center gap-1.5 pt-1.5 sm:pt-0 shrink-0">
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]" />
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#e879f9]" />
           </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-cyan-300/80">
-                ANALİTİK / AKADEMİK GÖZETİM / {selectedStudent ? 'ÖĞRENCİ X-RAY' : 'KURUM GENELİ'}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-[0.16em] sm:tracking-[0.2em] text-cyan-300/80">
+                ANALİTİK • {selectedStudent ? 'ÖĞRENCİ X-RAY' : 'KURUM GENELİ'}
               </span>
               {selectedStudent && precisionAnalytics.latestInstRank && (
-                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/35 text-[10px] font-black text-amber-300 font-mono">
-                  SON SINAV KURUM: {precisionAnalytics.latestInstRank.rank}. / {precisionAnalytics.latestInstRank.total}
-                  {precisionAnalytics.latestClassRank && ` • SINIF: ${precisionAnalytics.latestClassRank.rank}. / ${precisionAnalytics.latestClassRank.total}`}
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/35 text-[9px] sm:text-[10px] font-black text-amber-300 font-mono">
+                  KURUM: {precisionAnalytics.latestInstRank.rank}/{precisionAnalytics.latestInstRank.total}
+                  {precisionAnalytics.latestClassRank && ` • SINIF: ${precisionAnalytics.latestClassRank.rank}/${precisionAnalytics.latestClassRank.total}`}
                 </span>
               )}
             </div>
-            <h2 className="text-base sm:text-lg font-black tracking-wide text-white">
+            <h2 className="text-sm sm:text-lg font-black tracking-wide text-white truncate mt-0.5">
               {selectedStudent ? `${selectedStudent.fullName} — Gelişim Kokpiti` : 'HEDEFBAŞARI DENEME KOMUTA MERKEZİ'}
             </h2>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex p-1 rounded-xl bg-[#070b1a] border border-indigo-500/25">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full lg:w-auto">
+          <div className="col-span-2 sm:col-span-1 flex p-1 rounded-xl bg-[#070b1a] border border-indigo-500/25">
             {['TYT', 'AYT'].map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => setExamTypeFilter(type)}
-                className={`px-3 py-1 rounded-lg text-xs font-black transition ${
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 sm:py-1 rounded-lg text-xs font-black transition ${
                   examTypeFilter === type
                     ? 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
                     : 'text-slate-400 hover:text-white'
@@ -907,7 +901,7 @@ export default function AdminExamAnalyticsTab({
               setClassFilter(e.target.value);
               setSelectedStudentId('ALL');
             }}
-            className="px-3 py-2 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs font-bold text-cyan-200 focus:outline-none"
+            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs font-bold text-cyan-200 focus:outline-none"
           >
             <option value="ALL">Tüm Sınıflar</option>
             {HEDEFBASARI_CLASS_OPTIONS.map((cls) => (
@@ -918,7 +912,7 @@ export default function AdminExamAnalyticsTab({
           <select
             value={selectedStudentId}
             onChange={(e) => setSelectedStudentId(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#070b1a] border border-fuchsia-500/30 text-xs font-bold text-fuchsia-200 focus:outline-none max-w-[190px]"
+            className="w-full sm:w-auto sm:max-w-[190px] px-3 py-2 rounded-xl bg-[#070b1a] border border-fuchsia-500/30 text-xs font-bold text-fuchsia-200 focus:outline-none"
           >
             <option value="ALL">Kurum Geneli ({filteredStudentsPool.length})</option>
             {filteredStudentsPool.map((s) => (
@@ -930,10 +924,10 @@ export default function AdminExamAnalyticsTab({
             <button
               type="button"
               onClick={handlePrintStudentReportCard}
-              className="px-3 py-2 rounded-xl bg-[#070b1a] hover:bg-slate-900 border border-indigo-400/40 text-indigo-200 text-xs font-bold flex items-center gap-1.5 transition"
+              className="w-full sm:w-auto px-3 py-2 rounded-xl bg-[#070b1a] hover:bg-slate-900 border border-indigo-400/40 text-indigo-200 text-xs font-bold flex items-center justify-center gap-1.5 transition"
               title="Veli & Öğrenci İçin PDF Gelişim Karnesi Yazdır"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 shrink-0">
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                 <rect x="6" y="14" width="12" height="8" />
@@ -946,25 +940,25 @@ export default function AdminExamAnalyticsTab({
             type="button"
             onClick={handleExportExamsCsv}
             disabled={scopedTypeExams.length === 0}
-            className="px-3 py-2 rounded-xl bg-[#070b1a] hover:bg-slate-900 disabled:opacity-40 border border-emerald-500/35 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition"
+            className={`${selectedStudent && scopedTypeExams.length > 0 ? '' : 'col-span-2 sm:col-span-1'} w-full sm:w-auto px-3 py-2 rounded-xl bg-[#070b1a] hover:bg-slate-900 disabled:opacity-40 border border-emerald-500/35 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 transition`}
             title="Deneme Raporunu Excel/CSV İndir"
           >
-            <Download className="w-3.5 h-3.5" /> CSV
+            <Download className="w-3.5 h-3.5" /> CSV İndir
           </button>
 
           <button
             type="button"
             onClick={handleOpenNewModal}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-[0_0_20px_rgba(99,102,241,0.45)] transition"
+            className="col-span-2 sm:col-span-1 w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-[0_0_20px_rgba(99,102,241,0.45)] transition text-center"
           >
             + Yeni Deneme Gir
           </button>
         </div>
       </div>
 
-      {/* SATIR 1: 3'LÜ BENTO ANALİZ KARTLARI */}
-      <div className="grid lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-3 p-5 rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      {/* SATIR 1: 3'LÜ BENTO (Mobil 1 Sütun • Tablet 2+1 • Masaüstü 3-6-3) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 sm:gap-5">
+        <div className="md:col-span-1 lg:col-span-3 md:order-1 lg:order-1 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-4 sm:space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-indigo-300/80 block">
               GENEL BAKIŞ • {examTypeFilter}
@@ -974,10 +968,10 @@ export default function AdminExamAnalyticsTab({
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3.5 rounded-2xl bg-[#070b1a] border border-indigo-500/15 flex flex-col justify-between">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-[#070b1a] border border-indigo-500/15 flex flex-col justify-between">
               <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">ORTALAMA NET</span>
-              <div className="text-3xl font-black font-mono text-white mt-1">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-white mt-1">
                 {graphStats.avg.toFixed(1)}
               </div>
               <span className={`text-[10px] font-mono font-extrabold mt-1 ${graphStats.trendDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -985,8 +979,8 @@ export default function AdminExamAnalyticsTab({
               </span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-[#070b1a] border border-indigo-500/15 flex flex-col items-center justify-center text-center">
-              <div className="w-11 h-11 rounded-full border-[4px] border-indigo-500/20 border-t-cyan-400 border-r-fuchsia-400 flex items-center justify-center shadow-[0_0_12px_rgba(34,211,238,0.25)]">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-[#070b1a] border border-indigo-500/15 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-[4px] border-indigo-500/20 border-t-cyan-400 border-r-fuchsia-400 flex items-center justify-center shadow-[0_0_12px_rgba(34,211,238,0.25)]">
                 <span className="text-xs font-black font-mono text-white">{scopedTypeExams.length}</span>
               </div>
               <span className="text-[10px] font-extrabold text-fuchsia-300 uppercase mt-2">KAYITLI</span>
@@ -1008,7 +1002,7 @@ export default function AdminExamAnalyticsTab({
           </div>
         </div>
 
-        <div className="lg:col-span-6 p-5 rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="md:col-span-2 lg:col-span-6 md:order-3 lg:order-2 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-300/80 block">
@@ -1030,7 +1024,7 @@ export default function AdminExamAnalyticsTab({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
             <div className="px-3 py-2 rounded-xl bg-[#070b1a] border border-indigo-500/15">
               <span className="text-[9px] font-bold uppercase text-slate-400 block">ZİRVE NET</span>
               <span className="text-sm font-black font-mono text-white">{graphStats.peak.toFixed(2)}</span>
@@ -1053,9 +1047,9 @@ export default function AdminExamAnalyticsTab({
             </div>
           </div>
 
-          <div className="relative rounded-2xl bg-[#070b1a] border border-indigo-500/15 p-3">
+          <div className="relative rounded-2xl bg-[#070b1a] border border-indigo-500/15 p-2.5 sm:p-3">
             {chartSeries.length === 0 ? (
-              <div className="h-[160px] flex flex-col items-center justify-center text-center space-y-2">
+              <div className="h-[150px] sm:h-[160px] flex flex-col items-center justify-center text-center space-y-2">
                 <p className="text-xs text-slate-400">
                   Henüz <strong className="text-cyan-300">{examTypeFilter}</strong> denemesi girilmedi.
                 </p>
@@ -1069,7 +1063,7 @@ export default function AdminExamAnalyticsTab({
               </div>
             ) : (
               <>
-                <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-[165px] overflow-visible">
+                <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-[145px] sm:h-[165px] overflow-visible">
                   <defs>
                     <linearGradient id="cyanAreaGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.28" />
@@ -1128,9 +1122,10 @@ export default function AdminExamAnalyticsTab({
                       key={i}
                       onMouseEnter={() => setHoveredIdx(i)}
                       onMouseLeave={() => setHoveredIdx(null)}
+                      onClick={() => setHoveredIdx(hoveredIdx === i ? null : i)}
                       className="cursor-pointer"
                     >
-                      <circle cx={pt.x} cy={pt.y} r="10" fill="transparent" />
+                      <circle cx={pt.x} cy={pt.y} r="12" fill="transparent" />
                       <circle
                         cx={pt.x}
                         cy={pt.y}
@@ -1155,8 +1150,8 @@ export default function AdminExamAnalyticsTab({
                 </svg>
 
                 {hoveredIdx !== null && chartSeries[hoveredIdx] && (
-                  <div className="absolute top-3 right-3 px-3 py-2 rounded-xl bg-slate-950/95 border border-cyan-500/40 text-[11px] shadow-xl pointer-events-none">
-                    <div className="font-extrabold text-white">{chartSeries[hoveredIdx].label}</div>
+                  <div className="absolute top-2.5 right-2.5 px-3 py-2 rounded-xl bg-slate-950/95 border border-cyan-500/40 text-[11px] shadow-xl pointer-events-none z-10 max-w-[220px]">
+                    <div className="font-extrabold text-white truncate">{chartSeries[hoveredIdx].label}</div>
                     <div className="flex items-center gap-3 mt-1 font-mono">
                       <span className="text-cyan-300 font-bold">Net: {chartSeries[hoveredIdx].primaryNet}</span>
                       <span className="text-fuchsia-300">Kurum: {chartSeries[hoveredIdx].instAvg}</span>
@@ -1168,10 +1163,10 @@ export default function AdminExamAnalyticsTab({
           </div>
         </div>
 
-        <div className="lg:col-span-3 p-5 rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="md:col-span-1 lg:col-span-3 md:order-2 lg:order-3 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-fuchsia-300/80 block">
-              OTURUM ORANLARI & DAĞILIM
+              OTURUM ORANLARI &amp; DAĞILIM
             </span>
             <h3 className="text-sm font-black text-white mt-0.5">TYT / AYT Başarı Halkaları</h3>
           </div>
@@ -1227,9 +1222,9 @@ export default function AdminExamAnalyticsTab({
         </div>
       </div>
 
-      {/* SATIR 2: PERFORMANS TABLOSU + İSABET / YANLIŞ MALİYETİ & SİNYAL BLOKLARI */}
-      <div className="grid lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-7 p-5 rounded-3xl bg-[#0c1229] border border-indigo-500/20 space-y-4">
+      {/* SATIR 2: PERFORMANS TABLOSU (Mobilde Kart, Masaüstünde 12 Sütun) + SİNYAL BLOKLARI */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+        <div className="lg:col-span-7 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#0c1229] border border-indigo-500/20 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-300/80 block">
@@ -1237,7 +1232,7 @@ export default function AdminExamAnalyticsTab({
               </span>
               <h3 className="text-sm font-black text-white mt-0.5">
                 {selectedStudent
-                  ? `${selectedStudent.fullName} — ${examTypeFilter} Ders Analizi (Ortalama D / Y / B)`
+                  ? `${selectedStudent.fullName} — ${examTypeFilter} Ders Analizi`
                   : 'Detaylı İnceleme İçin Bir Öğrenciye Tıklayın'}
               </h3>
             </div>
@@ -1252,10 +1247,10 @@ export default function AdminExamAnalyticsTab({
             )}
           </div>
 
-          <div className="max-h-[340px] overflow-y-auto pr-1 space-y-2">
+          <div className="max-h-[360px] overflow-y-auto pr-1 space-y-2">
             {!selectedStudent ? (
               <>
-                <div className="grid grid-cols-12 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-indigo-500/15">
+                <div className="hidden sm:grid sm:grid-cols-12 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-indigo-500/15">
                   <span className="col-span-4">Öğrenci</span>
                   <span className="col-span-2">Durum</span>
                   <span className="col-span-4">Son {examTypeFilter} Neti</span>
@@ -1270,25 +1265,30 @@ export default function AdminExamAnalyticsTab({
                       key={row.student.id}
                       type="button"
                       onClick={() => setSelectedStudentId(row.student.id)}
-                      className="w-full text-left grid grid-cols-12 items-center gap-2 px-3 py-2.5 rounded-2xl bg-[#070b1a] hover:bg-[#111936] border border-indigo-500/10 hover:border-cyan-500/40 transition"
+                      className="w-full text-left flex flex-col sm:grid sm:grid-cols-12 sm:items-center gap-2 px-3 py-2.5 rounded-2xl bg-[#070b1a] hover:bg-[#111936] border border-indigo-500/10 hover:border-cyan-500/40 transition"
                     >
-                      <div className="col-span-4 flex items-center gap-2.5 min-w-0">
-                        <UserAvatar src="" name={row.student.fullName} className="w-8 h-8 shrink-0" textClass="text-[10px]" />
-                        <div className="min-w-0">
-                          <div className="text-xs font-extrabold text-white truncate">{row.student.fullName}</div>
-                          <div className="text-[10px] text-slate-400 truncate">
-                            {row.student.className} • {row.examCount} Deneme
+                      <div className="sm:col-span-4 flex items-center justify-between sm:justify-start gap-2.5 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <UserAvatar src="" name={row.student.fullName} className="w-8 h-8 shrink-0" textClass="text-[10px]" />
+                          <div className="min-w-0">
+                            <div className="text-xs font-extrabold text-white truncate">{row.student.fullName}</div>
+                            <div className="text-[10px] text-slate-400 truncate">
+                              {row.student.className} • {row.examCount} Deneme
+                            </div>
                           </div>
                         </div>
+                        <span className={`sm:hidden text-[10px] font-black tracking-wider shrink-0 ${row.statusClass}`}>
+                          {row.status}
+                        </span>
                       </div>
 
-                      <div className="col-span-2">
+                      <div className="hidden sm:block sm:col-span-2">
                         <span className={`text-[10px] font-black tracking-wider ${row.statusClass}`}>
                           {row.status}
                         </span>
                       </div>
 
-                      <div className="col-span-4 flex items-center gap-2">
+                      <div className="sm:col-span-4 flex items-center gap-2">
                         <div className="flex-1 h-2 rounded-full bg-slate-900 overflow-hidden">
                           <div
                             className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500"
@@ -1298,9 +1298,18 @@ export default function AdminExamAnalyticsTab({
                         <span className="text-xs font-mono font-bold text-slate-200 w-12 text-right">
                           {row.examCount > 0 ? row.latestNet.toFixed(1) : '—'}
                         </span>
+                        <span className="sm:hidden font-mono text-xs font-extrabold w-12 text-right">
+                          {row.examCount < 2 ? (
+                            <span className="text-slate-500">—</span>
+                          ) : (
+                            <span className={row.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                              {row.delta >= 0 ? `+${row.delta.toFixed(1)}` : row.delta.toFixed(1)}
+                            </span>
+                          )}
+                        </span>
                       </div>
 
-                      <div className="col-span-2 text-right font-mono text-xs font-extrabold">
+                      <div className="hidden sm:block sm:col-span-2 text-right font-mono text-xs font-extrabold">
                         {row.examCount < 2 ? (
                           <span className="text-slate-500">—</span>
                         ) : (
@@ -1321,22 +1330,27 @@ export default function AdminExamAnalyticsTab({
                   </div>
                 ) : (
                   subjectBreakdown.map((sec) => (
-                    <div key={sec.key} className="grid grid-cols-12 items-center gap-2 px-3.5 py-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
-                      <div className="col-span-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-extrabold text-white">{sec.label}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">/{sec.max}</span>
+                    <div key={sec.key} className="flex flex-col sm:grid sm:grid-cols-12 sm:items-center gap-2 px-3.5 py-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
+                      <div className="sm:col-span-4 flex items-center justify-between sm:block">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-extrabold text-white">{sec.label}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">/{sec.max}</span>
+                          </div>
+                          <div className="text-[10px] font-mono mt-0.5 flex items-center gap-2">
+                            <span className="text-emerald-400">{sec.avgD}D</span>
+                            <span className="text-rose-400">{sec.avgY}Y</span>
+                            <span className="text-slate-400">{sec.avgB}B</span>
+                          </div>
                         </div>
-                        <div className="text-[10px] font-mono mt-0.5 flex items-center gap-2">
-                          <span className="text-emerald-400">{sec.avgD}D</span>
-                          <span className="text-rose-400">{sec.avgY}Y</span>
-                          <span className="text-slate-400">{sec.avgB}B</span>
-                        </div>
+                        <span className={`sm:hidden text-[10px] font-black ${sec.statusTone}`}>{sec.status}</span>
                       </div>
-                      <div className="col-span-2">
+
+                      <div className="hidden sm:block sm:col-span-2">
                         <span className={`text-[10px] font-black ${sec.statusTone}`}>{sec.status}</span>
                       </div>
-                      <div className="col-span-4 flex items-center gap-2">
+
+                      <div className="sm:col-span-4 flex items-center gap-2">
                         <div className="flex-1 h-2 rounded-full bg-slate-900 overflow-hidden">
                           <div
                             className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500"
@@ -1344,8 +1358,12 @@ export default function AdminExamAnalyticsTab({
                           />
                         </div>
                         <span className="text-xs font-mono font-bold text-white w-12 text-right">{sec.latest}</span>
+                        <span className={`sm:hidden font-mono text-xs font-extrabold w-12 text-right ${sec.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {sec.delta >= 0 ? `+${sec.delta}` : sec.delta}
+                        </span>
                       </div>
-                      <div className={`col-span-2 text-right font-mono text-xs font-extrabold ${sec.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+
+                      <div className={`hidden sm:block sm:col-span-2 text-right font-mono text-xs font-extrabold ${sec.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {sec.delta >= 0 ? `+${sec.delta}` : sec.delta}
                       </div>
                     </div>
@@ -1357,74 +1375,73 @@ export default function AdminExamAnalyticsTab({
         </div>
 
         {/* SAĞ ALT: İSABET & YANLIŞ MALİYETİ + DİSİPLİN SİNYALLERİ */}
-        <div className="lg:col-span-5 p-5 rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-5 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#0c1229] border border-indigo-500/20 flex flex-col justify-between space-y-4">
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-fuchsia-300/80 block">
-              İSABET, YANLIŞ MALİYETİ & CANLI SİNYALLER
+              İSABET, YANLIŞ MALİYETİ &amp; CANLI SİNYALLER
             </span>
-            <h3 className="text-sm font-black text-white mt-0.5">Sınav Stratejisi & Akademik Takip</h3>
+            <h3 className="text-sm font-black text-white mt-0.5">Sınav Stratejisi &amp; Akademik Takip</h3>
           </div>
 
-          {/* İsabet & Yanlış Net Kaybı Bandı */}
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="p-3 rounded-2xl bg-[#070b1a] border border-cyan-500/20">
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">İSABET ORANI</span>
-              <span className="text-lg font-black font-mono text-cyan-300 mt-0.5 block">
+          <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#070b1a] border border-cyan-500/20">
+              <span className="text-[8px] sm:text-[9px] font-bold uppercase text-slate-400 block truncate">İSABET ORANI</span>
+              <span className="text-base sm:text-lg font-black font-mono text-cyan-300 mt-0.5 block">
                 %{precisionAnalytics.accuracyPct}
               </span>
-              <span className="text-[9px] font-mono text-slate-400">Ort. {precisionAnalytics.avgD}D / {precisionAnalytics.avgY}Y</span>
+              <span className="text-[9px] font-mono text-slate-400 block truncate">{precisionAnalytics.avgD}D/{precisionAnalytics.avgY}Y</span>
             </div>
 
-            <div className="p-3 rounded-2xl bg-[#070b1a] border border-rose-500/20">
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">YANLIŞ KAYBI</span>
-              <span className="text-lg font-black font-mono text-rose-400 mt-0.5 block">
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#070b1a] border border-rose-500/20">
+              <span className="text-[8px] sm:text-[9px] font-bold uppercase text-slate-400 block truncate">YANLIŞ KAYBI</span>
+              <span className="text-base sm:text-lg font-black font-mono text-rose-400 mt-0.5 block">
                 -{precisionAnalytics.avgWrongPenalty}
               </span>
-              <span className="text-[9px] font-mono text-slate-400">Net / Sınav</span>
+              <span className="text-[9px] font-mono text-slate-400 block truncate">Net / Sınav</span>
             </div>
 
-            <div className="p-3 rounded-2xl bg-[#070b1a] border border-emerald-500/20">
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">POTANSİYEL</span>
-              <span className="text-lg font-black font-mono text-emerald-300 mt-0.5 block">
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#070b1a] border border-emerald-500/20">
+              <span className="text-[8px] sm:text-[9px] font-bold uppercase text-slate-400 block truncate">POTANSİYEL</span>
+              <span className="text-base sm:text-lg font-black font-mono text-emerald-300 mt-0.5 block">
                 {precisionAnalytics.potentialWithoutWrongs}
               </span>
-              <span className="text-[9px] font-mono text-slate-400">Yanlışsız Net</span>
+              <span className="text-[9px] font-mono text-slate-400 block truncate">Yanlışsız Net</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="p-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">ÖDEV UYUMU</span>
-              <span className="text-lg font-black font-mono text-white mt-0.5 block">
+          <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
+              <span className="text-[8px] sm:text-[9px] font-bold uppercase text-slate-400 block truncate">ÖDEV UYUMU</span>
+              <span className="text-base sm:text-lg font-black font-mono text-white mt-0.5 block">
                 %{disciplineSignals.hwCompletionPct}
               </span>
               <MiniSparkline values={disciplineSignals.hwSparkValues} color="#22d3ee" gradId="spHw" />
             </div>
 
-            <div className="p-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">ETÜT SEANSI</span>
-              <span className="text-lg font-black font-mono text-white mt-0.5 block">
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
+              <span className="text-[8px] sm:text-[9px] font-bold uppercase text-slate-400 block truncate">ETÜT SEANSI</span>
+              <span className="text-base sm:text-lg font-black font-mono text-white mt-0.5 block">
                 {disciplineSignals.totalAppointments}
               </span>
               <MiniSparkline values={disciplineSignals.etutSparkValues} color="#e879f9" gradId="spEtut" />
             </div>
 
-            <div className="p-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">RİSK SİNYALİ</span>
-              <span className={`text-lg font-black font-mono mt-0.5 block ${disciplineSignals.riskCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#070b1a] border border-indigo-500/15">
+              <span className="text-[8px] sm:text-[9px] font-bold uppercase text-slate-400 block truncate">RİSK SİNYALİ</span>
+              <span className={`text-base sm:text-lg font-black font-mono mt-0.5 block ${disciplineSignals.riskCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                 {disciplineSignals.riskCount}
               </span>
               <MiniSparkline values={disciplineSignals.riskSparkValues} color={disciplineSignals.riskCount > 0 ? '#fb7185' : '#34d399'} gradId="spRisk" />
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0a1026] to-[#151233] border border-indigo-500/25 space-y-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-[#0a1026] to-[#151233] border border-indigo-500/25 space-y-3">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-300 block">
               OTOMATİK AKADEMİK TEŞHİS
             </span>
             <p className="text-xs text-slate-300 leading-relaxed">
               {scopedTypeExams.length === 0 ? (
-                <>Henüz analiz edilecek {examTypeFilter} verisi yok. Sağ üstteki <strong>+ Yeni Deneme Gir</strong> butonundan ilk sonuçları girdiğinizde ders bazlı teşhis burada otomatik oluşacaktır.</>
+                <>Henüz analiz edilecek {examTypeFilter} verisi yok. <strong>+ Yeni Deneme Gir</strong> butonundan ilk sonuçları girdiğinizde ders bazlı teşhis burada otomatik oluşacaktır.</>
               ) : (
                 <>
                   {selectedStudent ? `${selectedStudent.fullName} için ` : 'Seçili kapsamda '}
@@ -1460,17 +1477,17 @@ export default function AdminExamAnalyticsTab({
         </div>
       </div>
 
-      {/* SATIR 3: TAM GENİŞLİKTE DENEME & DERS SORU DÖKÜM MATRİSİ */}
-      <div className="p-5 rounded-3xl bg-[#0c1229] border border-indigo-500/25 shadow-[0_0_30px_rgba(79,70,229,0.08)] space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-500/15 pb-3.5">
+      {/* SATIR 3: DENEME & DERS SORU DÖKÜM MATRİSİ (Mobilde Özel Kartlar • Masaüstünde Tam Tablo) */}
+      <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#0c1229] border border-indigo-500/25 shadow-[0_0_30px_rgba(79,70,229,0.08)] space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-indigo-500/15 pb-3.5">
           <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-cyan-300/85 block">
-              {selectedStudent ? 'SINAV BAZLI SORU KARNESİ (DOĞRU • YANLIŞ • BOŞ • NET)' : 'KURUM GENELİ DENEME SINAVI ÖZET MATRİSİ'}
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] sm:tracking-[0.2em] text-cyan-300/85 block">
+              {selectedStudent ? 'SINAV BAZLI SORU KARNESİ (D • Y • B • NET)' : 'KURUM GENELİ DENEME SINAVI ÖZET MATRİSİ'}
             </span>
             <h3 className="text-sm sm:text-base font-black text-white mt-0.5">
               {selectedStudent
-                ? `${selectedStudent.fullName} — Tüm ${examTypeFilter} Denemeleri Ders & Soru Dökümü (${scopedTypeExams.length})`
-                : `Uygulanan ${examTypeFilter} Denemeleri & Ders Ortalamaları (${institutionExamSummaryRows.length})`}
+                ? `${selectedStudent.fullName} — ${examTypeFilter} Soru Dökümü (${scopedTypeExams.length})`
+                : `Uygulanan ${examTypeFilter} Denemeleri (${institutionExamSummaryRows.length})`}
             </h3>
           </div>
           <div className="flex items-center gap-3 text-[10px] font-mono">
@@ -1485,61 +1502,55 @@ export default function AdminExamAnalyticsTab({
             Henüz görüntülenecek {examTypeFilter} deneme sınavı kaydı bulunmuyor.
           </div>
         ) : selectedStudent ? (
-          /* ÖĞRENCİ X-RAY: HER DENEMEDE HANGİ DERSTEN KAÇ D / Y / B / NET YAPTIĞI */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-y-2 text-xs">
-              <thead>
-                <tr className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  <th className="px-3 py-1.5 min-w-[200px]">Deneme Adı &amp; Tarih</th>
-                  {matrixSubjectColumns.map((col) => (
-                    <th key={col.key} className="px-2.5 py-1.5 text-center min-w-[115px]">
-                      <div className="text-slate-200">{col.label}</div>
-                      <div className="text-[9px] font-mono text-slate-500">({col.max} Soru)</div>
-                    </th>
-                  ))}
-                  <th className="px-3 py-1.5 text-center min-w-[110px]">Toplam D/Y/B</th>
-                  <th className="px-3 py-1.5 text-right min-w-[100px]">Toplam Net</th>
-                  <th className="px-3 py-1.5 text-right min-w-[82px]">İşlem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...scopedTypeExams].reverse().map((ex, revIdx, arr) => {
-                  const prevChronoExam = arr[revIdx + 1] || null;
-                  const diffFromPrev = prevChronoExam
-                    ? Number(((Number(ex.totalNet) || 0) - (Number(prevChronoExam.totalNet) || 0)).toFixed(2))
-                    : null;
+          <>
+            {/* MOBİL KART GÖRÜNÜMÜ (Öğrenci X-Ray) */}
+            <div className="md:hidden space-y-3">
+              {[...scopedTypeExams].reverse().map((ex, revIdx, arr) => {
+                const prevChronoExam = arr[revIdx + 1] || null;
+                const diffFromPrev = prevChronoExam
+                  ? Number(((Number(ex.totalNet) || 0) - (Number(prevChronoExam.totalNet) || 0)).toFixed(2))
+                  : null;
 
-                  const totalD = typeof ex.totalD === 'number'
-                    ? ex.totalD
-                    : Object.values(ex.sections || {}).reduce((s, v) => s + (Number(v.d) || 0), 0);
-                  const totalY = typeof ex.totalY === 'number'
-                    ? ex.totalY
-                    : Object.values(ex.sections || {}).reduce((s, v) => s + (Number(v.y) || 0), 0);
-                  const totalB = typeof ex.totalB === 'number'
-                    ? ex.totalB
-                    : Math.max(0, (ex.maxPossible || maxPossibleForType) - totalD - totalY);
+                const totalD = typeof ex.totalD === 'number'
+                  ? ex.totalD
+                  : Object.values(ex.sections || {}).reduce((s, v) => s + (Number(v.d) || 0), 0);
+                const totalY = typeof ex.totalY === 'number'
+                  ? ex.totalY
+                  : Object.values(ex.sections || {}).reduce((s, v) => s + (Number(v.y) || 0), 0);
+                const totalB = typeof ex.totalB === 'number'
+                  ? ex.totalB
+                  : Math.max(0, (ex.maxPossible || maxPossibleForType) - totalD - totalY);
 
-                  return (
-                    <tr key={ex.id} className="bg-[#070b1a] hover:bg-[#0f1733] transition">
-                      <td className="px-3.5 py-3 rounded-l-2xl border-y border-l border-indigo-500/15">
+                return (
+                  <div key={ex.id} className="p-3.5 rounded-2xl bg-[#070b1a] border border-indigo-500/20 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
                         <div className="font-extrabold text-white text-xs leading-snug">{ex.examName}</div>
-                        <div className="text-[10px] font-mono text-slate-400 mt-0.5 flex items-center gap-2">
+                        <div className="text-[10px] font-mono text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
                           <span>{ex.date}</span>
-                          {ex.aytTrack && (
-                            <span className="px-1.5 py-0.2 rounded bg-fuchsia-500/20 text-fuchsia-300 font-bold">{ex.aytTrack}</span>
-                          )}
+                          {ex.aytTrack && <span className="text-fuchsia-300 font-bold">• {ex.aytTrack}</span>}
+                          <span>
+                            • <strong className="text-emerald-400">{totalD}D</strong>{' '}
+                            <strong className="text-rose-400">{totalY}Y</strong> {totalB}B
+                          </span>
                         </div>
-                      </td>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="px-2.5 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 font-mono text-xs font-black text-cyan-200">
+                          {Number(ex.totalNet).toFixed(2)} Net
+                        </div>
+                        {diffFromPrev !== null && (
+                          <div className={`text-[10px] font-mono font-extrabold mt-0.5 ${diffFromPrev >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {diffFromPrev >= 0 ? `+${diffFromPrev}` : diffFromPrev}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
+                    <div className="grid grid-cols-2 gap-2">
                       {matrixSubjectColumns.map((col) => {
                         const sec = ex.sections?.[col.key];
-                        if (!sec) {
-                          return (
-                            <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15 text-slate-600 font-mono">
-                              —
-                            </td>
-                          );
-                        }
+                        if (!sec) return null;
                         const d = Number(sec.d) || 0;
                         const y = Number(sec.y) || 0;
                         const b = sec.b !== undefined ? Number(sec.b) : Math.max(0, (sec.max || col.max) - d - y);
@@ -1547,126 +1558,274 @@ export default function AdminExamAnalyticsTab({
                         const fillPct = Math.max(0, Math.min(100, Math.round((net / (sec.max || col.max)) * 100)));
 
                         return (
-                          <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15">
-                            <div className="font-mono text-xs font-black text-cyan-300">{net.toFixed(2)}</div>
-                            <div className="text-[10px] font-mono mt-0.5 whitespace-nowrap">
+                          <div key={col.key} className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800/80 space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold text-slate-200 truncate">{getShortSubjectLabel(col.key, col.label)}</span>
+                              <span className="font-mono font-black text-cyan-300">{net.toFixed(2)}</span>
+                            </div>
+                            <div className="text-[10px] font-mono">
                               <span className="text-emerald-400 font-bold">{d}D</span>{' '}
                               <span className="text-rose-400 font-bold">{y}Y</span>{' '}
                               <span className="text-slate-500">{b}B</span>
                             </div>
-                            <div className="h-1 w-16 mx-auto rounded-full bg-slate-900 overflow-hidden mt-1">
-                              <div
-                                className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500"
-                                style={{ width: `${fillPct}%` }}
-                              />
+                            <div className="h-1 rounded-full bg-slate-900 overflow-hidden">
+                              <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500" style={{ width: `${fillPct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-indigo-500/10">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(ex)}
+                        className="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-[11px] font-bold flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3 h-3" /> Düzenle
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExam(ex)}
+                        className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 text-[11px] font-bold flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Sil
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* MASAÜSTÜ TABLO GÖRÜNÜMÜ (Öğrenci X-Ray) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-separate border-spacing-y-2 text-xs">
+                <thead>
+                  <tr className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    <th className="px-3 py-1.5 min-w-[200px]">Deneme Adı &amp; Tarih</th>
+                    {matrixSubjectColumns.map((col) => (
+                      <th key={col.key} className="px-2.5 py-1.5 text-center min-w-[115px]">
+                        <div className="text-slate-200">{col.label}</div>
+                        <div className="text-[9px] font-mono text-slate-500">({col.max} Soru)</div>
+                      </th>
+                    ))}
+                    <th className="px-3 py-1.5 text-center min-w-[110px]">Toplam D/Y/B</th>
+                    <th className="px-3 py-1.5 text-right min-w-[100px]">Toplam Net</th>
+                    <th className="px-3 py-1.5 text-right min-w-[82px]">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...scopedTypeExams].reverse().map((ex, revIdx, arr) => {
+                    const prevChronoExam = arr[revIdx + 1] || null;
+                    const diffFromPrev = prevChronoExam
+                      ? Number(((Number(ex.totalNet) || 0) - (Number(prevChronoExam.totalNet) || 0)).toFixed(2))
+                      : null;
+
+                    const totalD = typeof ex.totalD === 'number'
+                      ? ex.totalD
+                      : Object.values(ex.sections || {}).reduce((s, v) => s + (Number(v.d) || 0), 0);
+                    const totalY = typeof ex.totalY === 'number'
+                      ? ex.totalY
+                      : Object.values(ex.sections || {}).reduce((s, v) => s + (Number(v.y) || 0), 0);
+                    const totalB = typeof ex.totalB === 'number'
+                      ? ex.totalB
+                      : Math.max(0, (ex.maxPossible || maxPossibleForType) - totalD - totalY);
+
+                    return (
+                      <tr key={ex.id} className="bg-[#070b1a] hover:bg-[#0f1733] transition">
+                        <td className="px-3.5 py-3 rounded-l-2xl border-y border-l border-indigo-500/15">
+                          <div className="font-extrabold text-white text-xs leading-snug">{ex.examName}</div>
+                          <div className="text-[10px] font-mono text-slate-400 mt-0.5 flex items-center gap-2">
+                            <span>{ex.date}</span>
+                            {ex.aytTrack && (
+                              <span className="px-1.5 py-0.2 rounded bg-fuchsia-500/20 text-fuchsia-300 font-bold">{ex.aytTrack}</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {matrixSubjectColumns.map((col) => {
+                          const sec = ex.sections?.[col.key];
+                          if (!sec) {
+                            return (
+                              <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15 text-slate-600 font-mono">
+                                —
+                              </td>
+                            );
+                          }
+                          const d = Number(sec.d) || 0;
+                          const y = Number(sec.y) || 0;
+                          const b = sec.b !== undefined ? Number(sec.b) : Math.max(0, (sec.max || col.max) - d - y);
+                          const net = Number(sec.net) || 0;
+                          const fillPct = Math.max(0, Math.min(100, Math.round((net / (sec.max || col.max)) * 100)));
+
+                          return (
+                            <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15">
+                              <div className="font-mono text-xs font-black text-cyan-300">{net.toFixed(2)}</div>
+                              <div className="text-[10px] font-mono mt-0.5 whitespace-nowrap">
+                                <span className="text-emerald-400 font-bold">{d}D</span>{' '}
+                                <span className="text-rose-400 font-bold">{y}Y</span>{' '}
+                                <span className="text-slate-500">{b}B</span>
+                              </div>
+                              <div className="h-1 w-16 mx-auto rounded-full bg-slate-900 overflow-hidden mt-1">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500"
+                                  style={{ width: `${fillPct}%` }}
+                                />
+                              </div>
+                            </td>
+                          );
+                        })}
+
+                        <td className="px-3 py-3 text-center border-y border-indigo-500/15 font-mono text-[11px] whitespace-nowrap">
+                          <span className="text-emerald-400 font-bold">{totalD}D</span>{' '}
+                          <span className="text-rose-400 font-bold">{totalY}Y</span>{' '}
+                          <span className="text-slate-400">{totalB}B</span>
+                        </td>
+
+                        <td className="px-3 py-3 text-right border-y border-indigo-500/15 whitespace-nowrap">
+                          <div className="inline-block px-2.5 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 font-mono text-xs font-black text-cyan-200">
+                            {Number(ex.totalNet).toFixed(2)}
+                          </div>
+                          {diffFromPrev !== null && (
+                            <div className={`text-[10px] font-mono font-extrabold mt-0.5 ${diffFromPrev >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {diffFromPrev >= 0 ? `+${diffFromPrev}` : diffFromPrev}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-3 py-3 text-right rounded-r-2xl border-y border-r border-indigo-500/15">
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(ex)}
+                              className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/30 transition"
+                              title="Bu Denemeyi Düzenle"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteExam(ex)}
+                              className="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 hover:bg-rose-500/30 transition"
+                              title="Bu Deneme Kaydını Sil"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* MOBİL KART GÖRÜNÜMÜ (Kurum Özeti) */}
+            <div className="md:hidden space-y-3">
+              {institutionExamSummaryRows.map((row) => (
+                <div key={row.key} className="p-3.5 rounded-2xl bg-[#070b1a] border border-indigo-500/20 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-white text-xs">{row.examName}</div>
+                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        {row.date} • <span className="text-indigo-300 font-bold">{row.participantCount} Öğr.</span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/35 font-mono text-xs font-black text-fuchsia-200 shrink-0">
+                      {row.avgNet} Ort.
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {matrixSubjectColumns.map((col) => {
+                      const sec = row.sections[col.key];
+                      if (!sec) return null;
+                      return (
+                        <div key={col.key} className="p-2 rounded-xl bg-slate-950/90 border border-slate-800/80 flex items-center justify-between text-[11px]">
+                          <div>
+                            <span className="font-bold text-slate-200 block">{getShortSubjectLabel(col.key, col.label)}</span>
+                            <span className="text-[9px] font-mono text-slate-400">
+                              <span className="text-emerald-400">{sec.avgD}D</span> / <span className="text-rose-400">{sec.avgY}Y</span>
+                            </span>
+                          </div>
+                          <span className="font-mono font-black text-cyan-300">{sec.avgNet}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-indigo-500/10">
+                    <span className="text-slate-400">Sınav Birincisi:</span>
+                    <span className="font-bold text-amber-300 truncate ml-2">
+                      {row.topStudentName} <strong className="font-mono text-emerald-400">({row.maxNet})</strong>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* MASAÜSTÜ TABLO GÖRÜNÜMÜ (Kurum Özeti) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-separate border-spacing-y-2 text-xs">
+                <thead>
+                  <tr className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    <th className="px-3 py-1.5 min-w-[200px]">Deneme Adı &amp; Tarih</th>
+                    <th className="px-2.5 py-1.5 text-center">Katılım</th>
+                    {matrixSubjectColumns.map((col) => (
+                      <th key={col.key} className="px-2.5 py-1.5 text-center min-w-[100px]">
+                        <div className="text-slate-200">{getShortSubjectLabel(col.key, col.label)} Ort.</div>
+                        <div className="text-[9px] font-mono text-slate-500">({col.max} Soru)</div>
+                      </th>
+                    ))}
+                    <th className="px-3 py-1.5 text-center min-w-[130px]">Sınav Birincisi</th>
+                    <th className="px-3 py-1.5 text-right min-w-[100px]">Kurum Ort.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {institutionExamSummaryRows.map((row) => (
+                    <tr key={row.key} className="bg-[#070b1a] hover:bg-[#0f1733] transition">
+                      <td className="px-3.5 py-3 rounded-l-2xl border-y border-l border-indigo-500/15">
+                        <div className="font-extrabold text-white">{row.examName}</div>
+                        <div className="text-[10px] font-mono text-slate-400 mt-0.5">{row.date}</div>
+                      </td>
+                      <td className="px-2.5 py-3 text-center border-y border-indigo-500/15 font-mono font-bold text-indigo-300">
+                        {row.participantCount} Öğr.
+                      </td>
+                      {matrixSubjectColumns.map((col) => {
+                        const sec = row.sections[col.key];
+                        if (!sec) {
+                          return (
+                            <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15 text-slate-600 font-mono">
+                              —
+                            </td>
+                          );
+                        }
+                        return (
+                          <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15">
+                            <div className="font-mono text-xs font-black text-cyan-300">{sec.avgNet}</div>
+                            <div className="text-[10px] font-mono text-slate-400">
+                              <span className="text-emerald-400">{sec.avgD}D</span> / <span className="text-rose-400">{sec.avgY}Y</span>
                             </div>
                           </td>
                         );
                       })}
-
-                      <td className="px-3 py-3 text-center border-y border-indigo-500/15 font-mono text-[11px] whitespace-nowrap">
-                        <span className="text-emerald-400 font-bold">{totalD}D</span>{' '}
-                        <span className="text-rose-400 font-bold">{totalY}Y</span>{' '}
-                        <span className="text-slate-400">{totalB}B</span>
+                      <td className="px-3 py-3 text-center border-y border-indigo-500/15">
+                        <div className="text-xs font-bold text-amber-300 truncate max-w-[150px] mx-auto">{row.topStudentName}</div>
+                        <div className="text-[10px] font-mono text-emerald-400 font-bold">{row.maxNet} Net</div>
                       </td>
-
-                      <td className="px-3 py-3 text-right border-y border-indigo-500/15 whitespace-nowrap">
-                        <div className="inline-block px-2.5 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 font-mono text-xs font-black text-cyan-200">
-                          {Number(ex.totalNet).toFixed(2)}
-                        </div>
-                        {diffFromPrev !== null && (
-                          <div className={`text-[10px] font-mono font-extrabold mt-0.5 ${diffFromPrev >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {diffFromPrev >= 0 ? `+${diffFromPrev}` : diffFromPrev}
-                          </div>
-                        )}
-                      </td>
-
                       <td className="px-3 py-3 text-right rounded-r-2xl border-y border-r border-indigo-500/15">
-                        <div className="inline-flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(ex)}
-                            className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/30 transition"
-                            title="Bu Denemeyi Düzenle"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteExam(ex)}
-                            className="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 hover:bg-rose-500/30 transition"
-                            title="Bu Deneme Kaydını Sil"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        <span className="px-2.5 py-1 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/35 font-mono text-xs font-black text-fuchsia-200">
+                          {row.avgNet} Net
+                        </span>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          /* KURUM MODU: SINAV BAZLI ORTALAMALAR VE ZİRVE ÖĞRENCİ */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-y-2 text-xs">
-              <thead>
-                <tr className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  <th className="px-3 py-1.5 min-w-[200px]">Deneme Adı &amp; Tarih</th>
-                  <th className="px-2.5 py-1.5 text-center">Katılım</th>
-                  {matrixSubjectColumns.map((col) => (
-                    <th key={col.key} className="px-2.5 py-1.5 text-center min-w-[100px]">
-                      <div className="text-slate-200">{getShortSubjectLabel(col.key, col.label)} Ort.</div>
-                      <div className="text-[9px] font-mono text-slate-500">({col.max} Soru)</div>
-                    </th>
                   ))}
-                  <th className="px-3 py-1.5 text-center min-w-[130px]">Sınav Birincisi</th>
-                  <th className="px-3 py-1.5 text-right min-w-[100px]">Kurum Ort.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {institutionExamSummaryRows.map((row) => (
-                  <tr key={row.key} className="bg-[#070b1a] hover:bg-[#0f1733] transition">
-                    <td className="px-3.5 py-3 rounded-l-2xl border-y border-l border-indigo-500/15">
-                      <div className="font-extrabold text-white">{row.examName}</div>
-                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">{row.date}</div>
-                    </td>
-                    <td className="px-2.5 py-3 text-center border-y border-indigo-500/15 font-mono font-bold text-indigo-300">
-                      {row.participantCount} Öğr.
-                    </td>
-                    {matrixSubjectColumns.map((col) => {
-                      const sec = row.sections[col.key];
-                      if (!sec) {
-                        return (
-                          <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15 text-slate-600 font-mono">
-                            —
-                          </td>
-                        );
-                      }
-                      return (
-                        <td key={col.key} className="px-2.5 py-3 text-center border-y border-indigo-500/15">
-                          <div className="font-mono text-xs font-black text-cyan-300">{sec.avgNet}</div>
-                          <div className="text-[10px] font-mono text-slate-400">
-                            <span className="text-emerald-400">{sec.avgD}D</span> / <span className="text-rose-400">{sec.avgY}Y</span>
-                          </div>
-                        </td>
-                      );
-                    })}
-                    <td className="px-3 py-3 text-center border-y border-indigo-500/15">
-                      <div className="text-xs font-bold text-amber-300 truncate max-w-[150px] mx-auto">{row.topStudentName}</div>
-                      <div className="text-[10px] font-mono text-emerald-400 font-bold">{row.maxNet} Net</div>
-                    </td>
-                    <td className="px-3 py-3 text-right rounded-r-2xl border-y border-r border-indigo-500/15">
-                      <span className="px-2.5 py-1 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/35 font-mono text-xs font-black text-fuchsia-200">
-                        {row.avgNet} Net
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

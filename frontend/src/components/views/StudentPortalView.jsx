@@ -1,7 +1,14 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import UserAvatar from '../common/UserAvatar';
 import { Bell, Sparkles, Calendar, Trash2, Lock, Clock } from '../common/Icons';
-import { TUTORING_PURPOSES, DAYS_TR, HOURS_LIST, MAX_WEEKLY_APPOINTMENTS, MAX_SLOT_QUOTA } from '../../constants';
+import {
+  TUTORING_PURPOSES,
+  DAYS_TR,
+  HOURS_LIST,
+  MAX_WEEKLY_APPOINTMENTS,
+  MAX_SLOT_QUOTA,
+  ENABLE_EXAM_ANALYTICS
+} from '../../constants';
 import { maskTcKimlik, formatSlotLabel } from '../../utils/helpers';
 
 const SHORT_SUBJECT_LABELS = {
@@ -68,12 +75,11 @@ export default function StudentPortalView({
   const [nowMs, setNowMs] = useState(Date.now());
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
 
-  // Deneme Karnesi & Ölçeklenebilir Liste State'leri
   const [examTypeTab, setExamTypeTab] = useState('TYT');
-  const [chartRange, setChartRange] = useState('8'); // '8' | '16' | 'ALL'
+  const [chartRange, setChartRange] = useState('8');
   const [examSearch, setExamSearch] = useState('');
-  const [examSort, setExamSort] = useState('newest'); // 'newest' | 'oldest' | 'highest' | 'lowest'
-  const [examViewMode, setExamViewMode] = useState('cards'); // 'cards' | 'table'
+  const [examSort, setExamSort] = useState('newest');
+  const [examViewMode, setExamViewMode] = useState('cards');
   const [examPage, setExamPage] = useState(1);
   const [hoveredExamIdx, setHoveredExamIdx] = useState(null);
   const [expandedExamId, setExpandedExamId] = useState(null);
@@ -110,7 +116,9 @@ export default function StudentPortalView({
   };
 
   const freeHoursForPreviewDay = useMemo(() => {
-    return (selectedTeacher?.weeklySchedule || []).filter((s) => s.status === 'free' && s.day === previewDayTab);
+    return (selectedTeacher?.weeklySchedule || [])
+      .filter((s) => s.status === 'free' && s.day === previewDayTab)
+      .sort((a, b) => Number(a.hourSlot) - Number(b.hourSlot));
   }, [selectedTeacher, previewDayTab]);
 
   const myWeeklyAllAppointments = useMemo(() => {
@@ -298,7 +306,6 @@ export default function StudentPortalView({
 
   const myHomeworks = assignments.filter((a) => a.studentId === currentStudent?.id);
 
-  // Öğrencinin Kendi Deneme Verileri (Kronolojik: Sınav Tarihine Göre Eski -> Yeni)
   const myAllExams = useMemo(() => {
     return (exams || [])
       .filter((ex) => ex.studentId === currentStudent?.id)
@@ -311,7 +318,6 @@ export default function StudentPortalView({
 
   const examMaxPossible = examTypeTab === 'TYT' ? 120 : 80;
 
-  // Her denemenin bir önceki kronolojik sınava göre gerçek net farkı
   const examChronoDiffMap = useMemo(() => {
     const map = new Map();
     myFilteredExams.forEach((ex, idx) => {
@@ -377,7 +383,6 @@ export default function StudentPortalView({
     });
   }, [myFilteredExams]);
 
-  // Tablo görünümü için benzersiz ders sütunları
   const tableSubjectColumns = useMemo(() => {
     const colMap = new Map();
     myFilteredExams.forEach((ex) => {
@@ -390,7 +395,6 @@ export default function StudentPortalView({
     return Array.from(colMap.values());
   }, [myFilteredExams]);
 
-  // Arama + Sıralama + Sayfalama
   const visibleExamsList = useMemo(() => {
     const q = examSearch.trim().toLocaleLowerCase('tr-TR');
     const filtered = !q
@@ -416,7 +420,6 @@ export default function StudentPortalView({
     return visibleExamsList.slice(start, start + pageSize);
   }, [visibleExamsList, safePage, pageSize]);
 
-  // Neon SVG Grafik Koordinatları (Seçilen aralığa göre dinamik + etiket seyreltme)
   const svgW = 540;
   const svgH = 165;
   const padX = 26;
@@ -474,58 +477,64 @@ export default function StudentPortalView({
   const latestOverallExam = myAllExams.length ? myAllExams[myAllExams.length - 1] : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="relative p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <UserAvatar src="" name={currentStudent?.fullName} className="w-14 h-14" rounded="rounded-full" ringClass="ring-2 ring-cyan-400" textClass="text-base" />
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-cyan-500/15 text-cyan-300">Öğrenci Portalı</span>
-              <span className="text-xs font-mono text-slate-400">TC: {maskTcKimlik(currentStudent?.tcNo)}</span>
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
+      {/* ÖĞRENCİ ÜST KARTI */}
+      <div className="relative p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
+        <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+          <UserAvatar src="" name={currentStudent?.fullName} className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" rounded="rounded-full" ringClass="ring-2 ring-cyan-400" textClass="text-sm sm:text-base" />
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-500/15 text-cyan-300">Öğrenci Portalı</span>
+              <span className="text-[11px] font-mono text-slate-400">TC: {maskTcKimlik(currentStudent?.tcNo)}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white">{currentStudent?.fullName}</h1>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-0.5">
+            <h1 className="text-xl sm:text-3xl font-black text-white truncate">{currentStudent?.fullName}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-slate-300 pt-0.5">
               <span>Sınıf: <strong className="text-cyan-300">{currentStudent?.className}</strong></span>
-              <span>Ödeme Durumu: <strong className="text-emerald-400">{currentStudent?.paymentStatus}</strong></span>
+              <span>Ödeme: <strong className="text-emerald-400">{currentStudent?.paymentStatus}</strong></span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => setIsNotifDrawerOpen((prev) => !prev)} className={`relative px-4 py-3 rounded-2xl border transition flex items-center gap-2.5 ${isNotifDrawerOpen ? 'bg-indigo-600/20 border-indigo-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-200'}`}>
-            <div className="relative">
-              <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-amber-400 animate-bounce' : 'text-slate-400'}`} />
-              {unreadCount > 0 && <span className="absolute -top-2 -right-2 px-1.5 py-0.2 min-w-[18px] h-[18px] rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">{unreadCount}</span>}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+          <button type="button" onClick={() => setIsNotifDrawerOpen((prev) => !prev)} className={`col-span-2 sm:col-span-1 relative px-4 py-2.5 sm:py-3 rounded-2xl border transition flex items-center justify-between sm:justify-start gap-2.5 ${isNotifDrawerOpen ? 'bg-indigo-600/20 border-indigo-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-200'}`}>
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-amber-400 animate-bounce' : 'text-slate-400'}`} />
+                {unreadCount > 0 && <span className="absolute -top-2 -right-2 px-1.5 py-0.2 min-w-[18px] h-[18px] rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">{unreadCount}</span>}
+              </div>
+              <div className="text-left">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Bildirim Çekmecesi</span>
+                <span className="text-xs font-extrabold text-white">{myNotifications.length} Bildirim</span>
+              </div>
             </div>
-            <div className="text-left">
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Bildirim Çekmecesi</span>
-              <span className="text-xs font-extrabold text-white">{myNotifications.length} Bildirim</span>
-            </div>
+            <span className="sm:hidden text-[11px] font-bold text-indigo-300">{isNotifDrawerOpen ? 'Kapat' : 'Aç'}</span>
           </button>
 
-          <a href="#deneme-karnem" className="px-4 py-3 rounded-2xl bg-[#0c1229] border border-cyan-500/30 hover:border-cyan-400 transition text-right">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block">
-              {latestOverallExam ? `Son ${latestOverallExam.examType} Netim` : 'Deneme Karnem'}
-            </span>
-            <div className="text-lg font-black font-mono text-white mt-0.5">
-              {latestOverallExam ? `${Number(latestOverallExam.totalNet).toFixed(2)} Net` : `${myAllExams.length} Kayıt`}
-            </div>
-          </a>
+          {ENABLE_EXAM_ANALYTICS && (
+            <a href="#deneme-karnem" className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-[#0c1229] border border-cyan-500/30 hover:border-cyan-400 transition text-left sm:text-right">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block">
+                {latestOverallExam ? `Son ${latestOverallExam.examType} Netim` : 'Deneme Karnem'}
+              </span>
+              <div className="text-base sm:text-lg font-black font-mono text-white mt-0.5">
+                {latestOverallExam ? `${Number(latestOverallExam.totalNet).toFixed(2)} Net` : `${myAllExams.length} Kayıt`}
+              </div>
+            </a>
+          )}
 
-          <div className="px-5 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-right">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Haftalık Etüt Hakkı</span>
-            <div className="text-xl font-black text-indigo-400 mt-0.5">{weeklyUsedCount} / {MAX_WEEKLY_APPOINTMENTS} Kullanıldı</div>
+          <div className={`${ENABLE_EXAM_ANALYTICS ? '' : 'col-span-2 sm:col-span-1'} px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-slate-950 border border-slate-800 text-left sm:text-right`}>
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Haftalık Etüt</span>
+            <div className="text-base sm:text-xl font-black text-indigo-400 mt-0.5">{weeklyUsedCount} / {MAX_WEEKLY_APPOINTMENTS}</div>
           </div>
         </div>
 
         {isNotifDrawerOpen && (
-          <div className="w-full mt-4 pt-4 border-t border-slate-800/90">
+          <div className="w-full mt-2 pt-4 border-t border-slate-800/90">
             <div className="rounded-2xl bg-slate-950 border border-indigo-500/40 shadow-2xl overflow-hidden">
-              <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+              <div className="px-3.5 sm:px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-cyan-400" /><span className="text-xs font-extrabold text-white">Bildirim Merkezi</span></div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={handleMarkAllRead} className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-bold">Tümünü Okundu İşaretle</button>
-                  <button type="button" onClick={handleClearMyNotifications} className="px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 text-[11px] font-bold">Tümünü Temizle</button>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <button type="button" onClick={handleMarkAllRead} className="px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-[10px] sm:text-[11px] font-bold">Okundu</button>
+                  <button type="button" onClick={handleClearMyNotifications} className="px-2 sm:px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 text-[10px] sm:text-[11px] font-bold">Temizle</button>
                   <button type="button" onClick={() => setIsNotifDrawerOpen(false)} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">✕</button>
                 </div>
               </div>
@@ -534,13 +543,13 @@ export default function StudentPortalView({
                   <div className="py-8 text-center text-xs text-slate-500">Bildirim bulunmuyor.</div>
                 ) : (
                   myNotifications.map((n) => (
-                    <div key={n.id} className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${!n.isRead ? 'bg-indigo-950/30 border-indigo-500/40' : 'bg-slate-900/50 border-slate-800/70 opacity-75'}`}>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                        <div className="truncate"><strong className="text-white mr-2">{n.title}:</strong><span className="text-slate-300">{n.message}</span></div>
+                    <div key={n.id} className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 text-xs ${!n.isRead ? 'bg-indigo-950/30 border-indigo-500/40' : 'bg-slate-900/50 border-slate-800/70 opacity-75'}`}>
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1" />
+                        <div className="min-w-0"><strong className="text-white mr-1.5">{n.title}:</strong><span className="text-slate-300 break-words">{n.message}</span></div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[11px] font-mono text-slate-500">{n.time}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] font-mono text-slate-500 hidden sm:inline">{n.time}</span>
                         <button type="button" onClick={() => handleDismissSingleNotification(n.id)} className="w-6 h-6 rounded-lg bg-slate-900 text-slate-400 hover:text-rose-300 flex items-center justify-center">✕</button>
                       </div>
                     </div>
@@ -553,7 +562,7 @@ export default function StudentPortalView({
       </div>
 
       {myActiveAppointments.length > 0 && (
-        <div className="p-5 rounded-2xl bg-indigo-900/20 border border-indigo-500/30">
+        <div className="p-4 sm:p-5 rounded-2xl bg-indigo-900/20 border border-indigo-500/30">
           <h2 className="text-sm font-extrabold text-white flex items-center gap-2 mb-3"><Calendar className="w-4 h-4 text-indigo-400" /> Onaylı ve Bekleyen Etütlerim (İptal Paneli)</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {myActiveAppointments.map((slot) => {
@@ -563,7 +572,7 @@ export default function StudentPortalView({
               return (
                 <div key={slot.id} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <UserAvatar src={tObj?.photoUrl} name={slot.teacherName} className="w-10 h-10" rounded="rounded-full" ringClass="ring-2 ring-indigo-500/40" />
+                    <UserAvatar src={tObj?.photoUrl} name={slot.teacherName} className="w-10 h-10 shrink-0" rounded="rounded-full" ringClass="ring-2 ring-indigo-500/40" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between text-xs mb-1 gap-1">
                         <span className="font-bold text-white truncate">{slot.day} • {formatSlotLabel(slot.hourSlot)}</span>
@@ -575,7 +584,7 @@ export default function StudentPortalView({
                       <div className="text-[10px] mt-0.5 text-cyan-300">{myRecord.sessionType} ({topicDisplay})</div>
                     </div>
                   </div>
-                  <button onClick={() => handleCancelMySlot(slot.id)} className="w-full py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[10px] font-bold flex items-center justify-center gap-1">
+                  <button onClick={() => handleCancelMySlot(slot.id)} className="w-full py-2 sm:py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] sm:text-[10px] font-bold flex items-center justify-center gap-1">
                     <Trash2 className="w-3 h-3" /> Randevuyu İptal Et (Yer Aç)
                   </button>
                 </div>
@@ -585,53 +594,54 @@ export default function StudentPortalView({
         </div>
       )}
 
-      <div className="px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-extrabold text-[10px] uppercase shrink-0">Canlı Bildirim Barı</span>
+      <div className="px-3.5 sm:px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 flex items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-extrabold text-[9px] sm:text-[10px] uppercase shrink-0">Bildirim</span>
           {latestNotification ? (
             <div className="truncate text-slate-200">
-              <strong className="text-amber-300 mr-1.5">{latestNotification.title}:</strong>
+              <strong className="text-amber-300 mr-1">{latestNotification.title}:</strong>
               <span>{latestNotification.message}</span>
             </div>
           ) : (
-            <span className="text-slate-500 italic">Aktif bildirim yok.</span>
+            <span className="text-slate-500 italic truncate">Aktif bildirim yok.</span>
           )}
         </div>
-        <button type="button" onClick={() => setIsNotifDrawerOpen((prev) => !prev)} className="px-3 py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px]">Çekmeceyi Aç</button>
+        <button type="button" onClick={() => setIsNotifDrawerOpen((prev) => !prev)} className="px-2.5 sm:px-3 py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px] shrink-0">Aç</button>
       </div>
 
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
-        <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-500/30 flex flex-wrap items-center justify-between gap-4">
+      {/* ETÜT RANDEVU MASASI */}
+      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 sm:space-y-6">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
           <div className="space-y-1 max-w-2xl">
-            <div className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-cyan-400">
-              <Lock className="w-3.5 h-3.5" /> Gün Bazlı Adil Randevu Kilidi, Çakışma Koruması & Akıllı 20:00 Kuralı
+            <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-cyan-400">
+              <Lock className="w-3.5 h-3.5 shrink-0" /> Gün Kilidi, Çakışma Koruması &amp; Akıllı 20:00 Kuralı
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Sabah 5 ders (<strong className="text-white">08:30–12:30</strong>), Öğle Arası (<strong className="text-amber-300">12:30–13:30</strong>) ve Öğleden Sonra 5 Ders/Etüt (<strong className="text-white">13:30–17:30</strong>) uygulanır. Yalnızca <strong className="text-emerald-400">{currentSystemDay}</strong> gününün gelecek saatlerine ve akşam 20:00'den sonra <strong className="text-cyan-300">{nextDayName}</strong> gününe başvuru açıktır.
+              Sabah 4 ders (<strong className="text-white">08:30–12:20</strong>), Öğle Arası (<strong className="text-amber-300">12:20–13:30</strong>), Öğleden Sonra 4 ders (<strong className="text-white">13:30–17:20</strong>), Akşam Arası (<strong className="text-fuchsia-300">17:20–19:00</strong>) ve Akşam 2 ders (<strong className="text-white">19:00–20:50</strong>). Yalnızca <strong className="text-emerald-400">{currentSystemDay}</strong> gününün gelecek saatlerine ve 20:00 sonrası <strong className="text-cyan-300">{nextDayName}</strong> gününe başvuru açıktır.
             </p>
           </div>
-          <div className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2">
+          <div className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2 self-start sm:self-center shrink-0">
             <Calendar className="w-4 h-4 text-cyan-400" />
             <div>
-              <span className="block text-[10px] font-bold uppercase text-slate-400">Aktif Gün</span>
+              <span className="block text-[9px] font-bold uppercase text-slate-400">Aktif Gün</span>
               <span className="text-xs font-black text-emerald-400">{currentSystemDay}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
-          <div className="flex items-center gap-3.5">
-            <UserAvatar src={selectedTeacher?.photoUrl} name={selectedTeacher?.fullName} className="w-12 h-12" rounded="rounded-full" ringClass="ring-2 ring-cyan-400/50" />
-            <div>
-              <h2 className="text-xl font-extrabold text-white">{selectedTeacher?.fullName} — Randevu Masası</h2>
-              <p className="text-xs text-slate-400 mt-0.5">8 kişilik grup kotası • Soru Çözümü için konu belirtmek zorunlu değildir.</p>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-800 pb-5">
+          <div className="flex items-center gap-3">
+            <UserAvatar src={selectedTeacher?.photoUrl} name={selectedTeacher?.fullName} className="w-11 h-11 sm:w-12 sm:h-12 shrink-0" rounded="rounded-full" ringClass="ring-2 ring-cyan-400/50" />
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-extrabold text-white truncate">{selectedTeacher?.fullName} — Randevu Masası</h2>
+              <p className="text-xs text-slate-400 mt-0.5">8 kişilik grup kotası • Soru Çözümü için konu isteğe bağlıdır.</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 w-full lg:w-auto">
             <div>
               <label className="block text-[10px] font-bold uppercase text-amber-300 mb-1">1. Etüt Amacı</label>
-              <select value={sessionType} onChange={(e) => setSessionType(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-amber-500/40 text-xs font-bold text-amber-300">
+              <select value={sessionType} onChange={(e) => setSessionType(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/40 text-xs font-bold text-amber-300">
                 {TUTORING_PURPOSES.map((purpose) => (<option key={purpose} value={purpose}>{purpose}</option>))}
               </select>
             </div>
@@ -645,27 +655,28 @@ export default function StudentPortalView({
                 value={sessionTopic}
                 onChange={(e) => setSessionTopic(e.target.value)}
                 placeholder={isTopicOptional ? 'Boş: Genel Soru Çözümü' : 'Örn: Limit ve Süreklilik'}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-amber-500/40 text-xs font-bold text-amber-300 placeholder-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/40 text-xs font-bold text-amber-300 placeholder-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
               />
             </div>
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">3. Öğretmen</label>
-              <select value={selectedTeacher?.id || ''} onChange={(e) => setSelectedTeacherId(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-white">
+              <select value={selectedTeacher?.id || ''} onChange={(e) => setSelectedTeacherId(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-white">
                 {staff.map((t) => (<option key={t.id} value={t.id}>{t.fullName} ({t.branch})</option>))}
               </select>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        {/* 7 Gün Seçici (Mobilde Yatay Kaydırmalı Şerit, Masaüstünde 7 Sütun) */}
+        <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1 -mx-1 px-1 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
           {DAYS_TR.map((dayName) => {
             const unlocked = isDayUnlockedForBooking(dayName);
             const isSelectedTab = previewDayTab === dayName;
             const daySlotCount = (selectedTeacher?.weeklySchedule || []).filter((s) => s.status === 'free' && s.day === dayName).length;
 
             return (
-              <button key={dayName} type="button" onClick={() => setPreviewDayTab(dayName)} className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${isSelectedTab ? 'bg-emerald-500/15 border-emerald-400 text-white' : unlocked ? 'bg-slate-950 border-emerald-500/30 text-slate-200' : 'bg-slate-950/50 border-slate-800 text-slate-500'}`}>
-                <div className="flex items-center justify-between">
+              <button key={dayName} type="button" onClick={() => setPreviewDayTab(dayName)} className={`min-w-[104px] sm:min-w-0 shrink-0 p-3 rounded-xl border text-left transition flex flex-col justify-between ${isSelectedTab ? 'bg-emerald-500/15 border-emerald-400 text-white' : unlocked ? 'bg-slate-950 border-emerald-500/30 text-slate-200' : 'bg-slate-950/50 border-slate-800 text-slate-500'}`}>
+                <div className="flex items-center justify-between gap-1">
                   <span className="font-extrabold text-xs">{dayName}</span>
                   {unlocked ? <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-black">AÇIK</span> : <Lock className="w-3.5 h-3.5 text-slate-500" />}
                 </div>
@@ -679,16 +690,16 @@ export default function StudentPortalView({
         </div>
 
         {bookingAlert.message && (
-          <div className={`p-4 rounded-xl text-xs font-bold flex items-center justify-between ${bookingAlert.type === 'error' ? 'bg-rose-500/15 text-rose-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+          <div className={`p-3.5 sm:p-4 rounded-xl text-xs font-bold flex items-center justify-between gap-2 ${bookingAlert.type === 'error' ? 'bg-rose-500/15 text-rose-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
             <span>{bookingAlert.message}</span>
-            <button onClick={() => setBookingAlert({ type: '', message: '' })}>✕</button>
+            <button onClick={() => setBookingAlert({ type: '', message: '' })} className="shrink-0">✕</button>
           </div>
         )}
 
         {freeHoursForPreviewDay.length === 0 ? (
           <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs text-slate-400">Bu gün için boş etüt saati bulunmuyor.</div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
             {freeHoursForPreviewDay.map((freeSlot) => {
               const slotDoc = appointments.find((a) => a.teacherId === selectedTeacher?.id && a.day === freeSlot.day && !a.archivedFromDesk && Number(a.hourSlot) === Number(freeSlot.hourSlot));
               const activeParticipants = slotDoc ? slotDoc.participants.filter((p) => p.status !== 'Rejected') : [];
@@ -717,7 +728,7 @@ export default function StudentPortalView({
               const isDisabled = !dayUnlocked || isTimePassed || isQuotaFull || isAlreadyEnrolled || hasTimeConflict || weeklyUsedCount >= MAX_WEEKLY_APPOINTMENTS;
 
               return (
-                <div key={`${freeSlot.day}-${freeSlot.hourSlot}`} className={`p-5 rounded-2xl border transition flex flex-col justify-between ${isDisabled ? 'bg-slate-950/40 border-slate-800 opacity-65' : 'bg-slate-950 border-slate-800 hover:border-cyan-500/50'}`}>
+                <div key={`${freeSlot.day}-${freeSlot.hourSlot}`} className={`p-4 sm:p-5 rounded-2xl border transition flex flex-col justify-between ${isDisabled ? 'bg-slate-950/40 border-slate-800 opacity-65' : 'bg-slate-950 border-slate-800 hover:border-cyan-500/50'}`}>
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-sm font-extrabold text-white">{freeSlot.day}</span>
@@ -726,7 +737,7 @@ export default function StudentPortalView({
                       </span>
                     </div>
                     <div className="mb-3 flex items-center justify-between text-[11px] font-mono text-cyan-400 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800">
-                      <span>⏰ Saat Aralığı:</span>
+                      <span>⏰ Saat:</span>
                       <strong className="text-emerald-300">{hourMeta?.range || ''}</strong>
                     </div>
 
@@ -747,7 +758,7 @@ export default function StudentPortalView({
                     <div className="mb-3">
                       <div className="flex items-center justify-between text-xs mb-1.5">
                         <span className="text-slate-400">Grup Kotası:</span>
-                        <span className={`font-black ${isQuotaFull ? 'text-rose-400' : 'text-emerald-400'}`}>{occupancy} / {MAX_SLOT_QUOTA} Öğrenci</span>
+                        <span className={`font-black ${isQuotaFull ? 'text-rose-400' : 'text-emerald-400'}`}>{occupancy} / {MAX_SLOT_QUOTA}</span>
                       </div>
                       <div className="grid grid-cols-8 gap-1">
                         {[0, 1, 2, 3, 4, 5, 6, 7].map((seatIdx) => (
@@ -785,508 +796,505 @@ export default function StudentPortalView({
         )}
       </div>
 
-      {/* DENEME SINAVI KARNEM & GELİŞİM GRAFİĞİM (ÇOKLU DENEME OPTİMİZE) */}
-      <div id="deneme-karnem" className="p-6 rounded-3xl bg-gradient-to-br from-[#0c1229] via-[#0e1532] to-[#141133] border border-indigo-500/30 shadow-[0_0_35px_rgba(79,70,229,0.12)] space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-indigo-500/20 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-cyan-300">
-                KİŞİSEL AKADEMİK GELİŞİM ANALİZİ
+      {/* DENEME SINAVI KARNEM & GELİŞİM GRAFİĞİM (FEATURE FLAG İLE KONTROLLÜ) */}
+      {ENABLE_EXAM_ANALYTICS && (
+        <div id="deneme-karnem" className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#0c1229] via-[#0e1532] to-[#141133] border border-indigo-500/30 shadow-[0_0_35px_rgba(79,70,229,0.12)] space-y-5 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 border-b border-indigo-500/20 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-300">
+                  KİŞİSEL AKADEMİK GELİŞİM ANALİZİ
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-black text-white mt-0.5">Deneme Sınavı Karnem &amp; Net Grafiğim</h2>
+            </div>
+
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#070b1a] border border-indigo-500/25 w-full sm:w-auto">
+              {['TYT', 'AYT'].map((type) => {
+                const count = myAllExams.filter((e) => e.examType === type).length;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      setExamTypeTab(type);
+                      setHoveredExamIdx(null);
+                      setExpandedExamId(null);
+                    }}
+                    className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-black transition ${
+                      examTypeTab === type
+                        ? 'bg-gradient-to-r from-cyan-400 to-indigo-500 text-slate-950 shadow-[0_0_14px_rgba(34,211,238,0.4)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {type} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4 Özet KPI Kartı */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block">SON {examTypeTab} NETİM</span>
+              <div className="flex items-baseline gap-1.5 sm:gap-2 mt-1">
+                <span className="text-xl sm:text-2xl font-black font-mono text-white">{myExamSummary.latest.toFixed(2)}</span>
+                {myExamSummary.count >= 2 && (
+                  <span className={`text-[11px] sm:text-xs font-mono font-extrabold ${myExamSummary.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {myExamSummary.delta >= 0 ? `+${myExamSummary.delta}` : myExamSummary.delta}
+                  </span>
+                )}
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 mt-0.5 block">Maksimum {examMaxPossible} Net</span>
+            </div>
+
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block">EN YÜKSEK (ZİRVE)</span>
+              <span className="text-xl sm:text-2xl font-black font-mono text-cyan-300 mt-1 block">{myExamSummary.peak.toFixed(2)}</span>
+              <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 mt-0.5 block">
+                İsabet: <strong className="text-cyan-300">%{myExamSummary.accuracyPct}</strong>
               </span>
             </div>
-            <h2 className="text-xl font-black text-white mt-0.5">Deneme Sınavı Karnem &amp; Net Grafiğim</h2>
-          </div>
 
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#070b1a] border border-indigo-500/25">
-            {['TYT', 'AYT'].map((type) => {
-              const count = myAllExams.filter((e) => e.examType === type).length;
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => {
-                    setExamTypeTab(type);
-                    setHoveredExamIdx(null);
-                    setExpandedExamId(null);
-                  }}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-black transition ${
-                    examTypeTab === type
-                      ? 'bg-gradient-to-r from-cyan-400 to-indigo-500 text-slate-950 shadow-[0_0_14px_rgba(34,211,238,0.4)]'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {type} ({count})
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 4 Özet KPI Kartı (İsabet ve Yanlış Kaybı Dahil) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">SON {examTypeTab} NETİM</span>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black font-mono text-white">{myExamSummary.latest.toFixed(2)}</span>
-              {myExamSummary.count >= 2 && (
-                <span className={`text-xs font-mono font-extrabold ${myExamSummary.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {myExamSummary.delta >= 0 ? `+${myExamSummary.delta}` : myExamSummary.delta}
-                </span>
-              )}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block">GENEL ORTALAMA</span>
+              <span className="text-xl sm:text-2xl font-black font-mono text-fuchsia-300 mt-1 block">{myExamSummary.avg.toFixed(2)}</span>
+              <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 mt-0.5 block">
+                Kaybı: <strong className="text-rose-400">-{myExamSummary.avgWrongPenalty}</strong> Net
+              </span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">Maksimum {examMaxPossible} Net</span>
+
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block">GİRİLEN {examTypeTab}</span>
+              <span className="text-xl sm:text-2xl font-black font-mono text-indigo-300 mt-1 block">{myExamSummary.count} Sınav</span>
+              <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 mt-0.5 block">Dönem Arşivi</span>
+            </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">EN YÜKSEK (ZİRVE)</span>
-            <span className="text-2xl font-black font-mono text-cyan-300 mt-1 block">{myExamSummary.peak.toFixed(2)}</span>
-            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">
-              İsabet Oranı: <strong className="text-cyan-300">%{myExamSummary.accuracyPct}</strong>
-            </span>
-          </div>
+          {myFilteredExams.length === 0 ? (
+            <div className="p-8 sm:p-10 rounded-2xl bg-[#070b1a] border border-indigo-500/15 text-center space-y-1.5">
+              <p className="text-sm font-bold text-slate-300">Henüz sisteme işlenmiş {examTypeTab} deneme sonucunuz bulunmuyor.</p>
+              <p className="text-xs text-slate-500">Yönetim tarafından deneme sonuçlarınız girildiğinde gelişim grafiğiniz burada otomatik oluşacaktır.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+              {/* Sol: Neon Gelişim Eğrisi */}
+              <div className="lg:col-span-7 p-3.5 sm:p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20 flex flex-col justify-between space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-cyan-300">
+                    {examTypeTab} Net Eğrim ({chartRange === 'ALL' ? `Tüm ${myFilteredExams.length}` : `Son ${recentExamsForChart.length}`})
+                  </span>
+                  <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-indigo-500/20">
+                    {[
+                      { id: '8', label: 'Son 8' },
+                      { id: '16', label: 'Son 16' },
+                      { id: 'ALL', label: 'Tümü' }
+                    ].map((rng) => (
+                      <button
+                        key={rng.id}
+                        type="button"
+                        onClick={() => {
+                          setChartRange(rng.id);
+                          setHoveredExamIdx(null);
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition ${
+                          chartRange === rng.id
+                            ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-500/40'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {rng.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">GENEL ORTALAMA</span>
-            <span className="text-2xl font-black font-mono text-fuchsia-300 mt-1 block">{myExamSummary.avg.toFixed(2)}</span>
-            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">
-              Yanlış Kaybı: <strong className="text-rose-400">-{myExamSummary.avgWrongPenalty}</strong> Net/Sınav
-            </span>
-          </div>
+                <div className="relative pt-2">
+                  <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-[150px] sm:h-[175px] overflow-visible">
+                    <defs>
+                      <linearGradient id="stCyanArea" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.32" />
+                        <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+                      </linearGradient>
+                      <linearGradient id="stCyanStroke" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#22d3ee" />
+                        <stop offset="50%" stopColor="#818cf8" />
+                        <stop offset="100%" stopColor="#e879f9" />
+                      </linearGradient>
+                    </defs>
 
-          <div className="p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">GİRİLEN {examTypeTab}</span>
-            <span className="text-2xl font-black font-mono text-indigo-300 mt-1 block">{myExamSummary.count} Sınav</span>
-            <span className="text-[10px] font-mono text-slate-500 mt-0.5 block">Tüm Dönem Arşivi</span>
-          </div>
-        </div>
+                    {[0.25, 0.5, 0.75, 1].map((ratio) => {
+                      const y = svgH - padY - ratio * (svgH - padY * 2);
+                      return (
+                        <g key={ratio}>
+                          <line x1={padX} y1={y} x2={svgW - padX} y2={y} stroke="rgba(148,163,184,0.09)" strokeDasharray="3 4" />
+                          <text x="2" y={y + 3} fill="rgba(148,163,184,0.5)" fontSize="9" fontFamily="monospace">
+                            {Math.round(studentChartCoords.yMax * ratio)}
+                          </text>
+                        </g>
+                      );
+                    })}
 
-        {myFilteredExams.length === 0 ? (
-          <div className="p-10 rounded-2xl bg-[#070b1a] border border-indigo-500/15 text-center space-y-1.5">
-            <p className="text-sm font-bold text-slate-300">Henüz sisteme işlenmiş {examTypeTab} deneme sonucunuz bulunmuyor.</p>
-            <p className="text-xs text-slate-500">Yönetim tarafından deneme sonuçlarınız girildiğinde gelişim grafiğiniz burada otomatik oluşacaktır.</p>
-          </div>
-        ) : (
-          <div className="grid lg:grid-cols-12 gap-5">
-            {/* Sol: Neon Gelişim Eğrisi (Aralık Seçici + Ortalama Çizgisi) */}
-            <div className="lg:col-span-7 p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20 flex flex-col justify-between space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-cyan-300">
-                  {examTypeTab} Net Gelişim Eğrim ({chartRange === 'ALL' ? `Tüm ${myFilteredExams.length}` : `Son ${recentExamsForChart.length}`} Sınav)
+                    {studentChartCoords.avgY !== null && studentChartCoords.points.length >= 2 && (
+                      <g>
+                        <line
+                          x1={padX}
+                          y1={studentChartCoords.avgY}
+                          x2={svgW - padX}
+                          y2={studentChartCoords.avgY}
+                          stroke="rgba(232,121,249,0.45)"
+                          strokeWidth="1.2"
+                          strokeDasharray="4 4"
+                        />
+                        <text
+                          x={svgW - padX}
+                          y={studentChartCoords.avgY - 4}
+                          textAnchor="end"
+                          fill="rgba(232,121,249,0.8)"
+                          fontSize="8.5"
+                          fontFamily="monospace"
+                        >
+                          Ort: {myExamSummary.avg.toFixed(1)}
+                        </text>
+                      </g>
+                    )}
+
+                    {studentArea && <polygon points={studentArea} fill="url(#stCyanArea)" />}
+
+                    {studentChartCoords.points.length >= 2 && (
+                      <polyline
+                        fill="none"
+                        stroke="url(#stCyanStroke)"
+                        strokeWidth="2.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={studentPolyline}
+                        style={{ filter: 'drop-shadow(0 0 8px rgba(34,211,238,0.6))' }}
+                      />
+                    )}
+
+                    {studentChartCoords.points.map((pt, idx) => {
+                      const isFirstOrLast = idx === 0 || idx === studentChartCoords.points.length - 1;
+                      const showLabel = isFirstOrLast || idx % labelStep === 0;
+                      const dotRadius = studentChartCoords.points.length > 16 ? 3 : 4.2;
+
+                      return (
+                        <g
+                          key={idx}
+                          onMouseEnter={() => setHoveredExamIdx(idx)}
+                          onMouseLeave={() => setHoveredExamIdx(null)}
+                          onClick={() => setHoveredExamIdx(hoveredExamIdx === idx ? null : idx)}
+                          className="cursor-pointer"
+                        >
+                          <circle cx={pt.x} cy={pt.y} r="12" fill="transparent" />
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={hoveredExamIdx === idx ? '6' : dotRadius}
+                            fill="#ffffff"
+                            stroke="#22d3ee"
+                            strokeWidth="2.2"
+                            style={{ filter: 'drop-shadow(0 0 8px #22d3ee)' }}
+                          />
+                          {showLabel && (
+                            <>
+                              <text x={pt.x} y={pt.y - 9} textAnchor="middle" fill="#67e8f9" fontSize="9" fontFamily="monospace" fontWeight="bold">
+                                {pt.val.toFixed(1)}
+                              </text>
+                              <text x={pt.x} y={svgH - 2} textAnchor="middle" fill="rgba(148,163,184,0.7)" fontSize="8.5" fontFamily="monospace">
+                                {pt.shortDate}
+                              </text>
+                            </>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+                  {hoveredExamIdx !== null && recentExamsForChart[hoveredExamIdx] && (
+                    <div className="absolute top-1 right-1 sm:right-2 px-3 py-2 rounded-xl bg-slate-950/95 border border-cyan-500/40 text-[11px] shadow-xl pointer-events-none z-10 max-w-[220px]">
+                      <div className="font-extrabold text-white truncate">{recentExamsForChart[hoveredExamIdx].examName}</div>
+                      <div className="font-mono text-cyan-300 font-bold mt-0.5">
+                        {Number(recentExamsForChart[hoveredExamIdx].totalNet).toFixed(2)} Net • {recentExamsForChart[hoveredExamIdx].date}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sağ: Branş Ortalamaları */}
+              <div className="lg:col-span-5 p-3.5 sm:p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20 space-y-3">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-fuchsia-300 block">
+                  Branş Bazlı Ortalama Performansım
                 </span>
-                <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-indigo-500/20">
-                  {[
-                    { id: '8', label: 'Son 8' },
-                    { id: '16', label: 'Son 16' },
-                    { id: 'ALL', label: 'Tümü' }
-                  ].map((rng) => (
-                    <button
-                      key={rng.id}
-                      type="button"
-                      onClick={() => {
-                        setChartRange(rng.id);
-                        setHoveredExamIdx(null);
-                      }}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition ${
-                        chartRange === rng.id
-                          ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-500/40'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {rng.label}
-                    </button>
+                <div className="space-y-3 max-h-[210px] overflow-y-auto pr-1">
+                  {mySubjectStats.map((sec) => (
+                    <div key={sec.key} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-200 truncate mr-2">
+                          {sec.label} <span className="text-[10px] font-mono text-slate-500">({sec.max})</span>
+                        </span>
+                        <div className="flex items-center gap-2 font-mono shrink-0">
+                          <span className="font-black text-white">{sec.avg.toFixed(2)} Net</span>
+                          {myFilteredExams.length >= 2 && (
+                            <span className={`text-[10px] font-bold ${sec.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {sec.delta >= 0 ? `+${sec.delta}` : sec.delta}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-900 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 transition-all duration-500"
+                          style={{ width: `${sec.pct}%` }}
+                        />
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
 
-              <div className="relative pt-2">
-                <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-[175px] overflow-visible">
-                  <defs>
-                    <linearGradient id="stCyanArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.32" />
-                      <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-                    </linearGradient>
-                    <linearGradient id="stCyanStroke" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#22d3ee" />
-                      <stop offset="50%" stopColor="#818cf8" />
-                      <stop offset="100%" stopColor="#e879f9" />
-                    </linearGradient>
-                  </defs>
+              {/* Alt: Ölçeklenebilir Deneme Arşivi */}
+              <div className="lg:col-span-12 space-y-3.5 pt-2 border-t border-indigo-500/15">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300 block">
+                      {examTypeTab} Deneme Arşivim ({visibleExamsList.length} / {myFilteredExams.length})
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      Ders detayları için denemeye dokunun veya hızlı kıyaslama için Tablo moduna geçin.
+                    </span>
+                  </div>
 
-                  {[0.25, 0.5, 0.75, 1].map((ratio) => {
-                    const y = svgH - padY - ratio * (svgH - padY * 2);
-                    return (
-                      <g key={ratio}>
-                        <line x1={padX} y1={y} x2={svgW - padX} y2={y} stroke="rgba(148,163,184,0.09)" strokeDasharray="3 4" />
-                        <text x="2" y={y + 3} fill="rgba(148,163,184,0.5)" fontSize="9" fontFamily="monospace">
-                          {Math.round(studentChartCoords.yMax * ratio)}
-                        </text>
-                      </g>
-                    );
-                  })}
-
-                  {/* Ortalama Referans Çizgisi */}
-                  {studentChartCoords.avgY !== null && studentChartCoords.points.length >= 2 && (
-                    <g>
-                      <line
-                        x1={padX}
-                        y1={studentChartCoords.avgY}
-                        x2={svgW - padX}
-                        y2={studentChartCoords.avgY}
-                        stroke="rgba(232,121,249,0.45)"
-                        strokeWidth="1.2"
-                        strokeDasharray="4 4"
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <div className="col-span-2 sm:col-span-1 relative">
+                      <input
+                        type="text"
+                        placeholder="Deneme adı veya tarih ara..."
+                        value={examSearch}
+                        onChange={(e) => setExamSearch(e.target.value)}
+                        className="w-full sm:w-52 pl-3 pr-7 py-2 sm:py-1.5 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
                       />
-                      <text
-                        x={svgW - padX}
-                        y={studentChartCoords.avgY - 4}
-                        textAnchor="end"
-                        fill="rgba(232,121,249,0.8)"
-                        fontSize="8.5"
-                        fontFamily="monospace"
+                      {examSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setExamSearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-[11px]"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <select
+                      value={examSort}
+                      onChange={(e) => setExamSort(e.target.value)}
+                      className="w-full sm:w-auto px-2.5 py-2 sm:py-1.5 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs font-bold text-cyan-200 focus:outline-none"
+                    >
+                      <option value="newest">En Yeni Tarih</option>
+                      <option value="oldest">En Eski Tarih</option>
+                      <option value="highest">En Yüksek Net</option>
+                      <option value="lowest">En Düşük Net</option>
+                    </select>
+
+                    <div className="flex p-0.5 rounded-xl bg-[#070b1a] border border-indigo-500/25 w-full sm:w-auto">
+                      {[
+                        { id: 'cards', label: 'Kartlar' },
+                        { id: 'table', label: 'Tablo' }
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setExamViewMode(m.id)}
+                          className={`flex-1 sm:flex-none px-2.5 py-1.5 sm:py-1 rounded-lg text-[11px] font-bold transition ${
+                            examViewMode === m.id
+                              ? 'bg-indigo-500/30 text-white border border-indigo-400/40'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {visibleExamsList.length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-[#070b1a] border border-indigo-500/15 text-center text-xs text-slate-400">
+                    Arama kriterine uygun deneme bulunamadı.
+                  </div>
+                ) : examViewMode === 'cards' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {paginatedExams.map((ex) => {
+                      const isExpanded = expandedExamId === ex.id;
+                      const chronoDiff = examChronoDiffMap.get(ex.id);
+                      return (
+                        <div key={ex.id} className={`rounded-2xl bg-[#070b1a] border transition overflow-hidden ${isExpanded ? 'border-cyan-500/45 shadow-[0_0_20px_rgba(34,211,238,0.08)]' : 'border-indigo-500/20'}`}>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedExamId(isExpanded ? null : ex.id)}
+                            className="w-full px-3.5 sm:px-4 py-3 flex items-center justify-between gap-2.5 hover:bg-[#0d1430] transition text-left"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-xs sm:text-sm font-extrabold text-white truncate">{ex.examName}</div>
+                              <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
+                                <span>{ex.date}</span>
+                                {ex.aytTrack && <span className="text-fuchsia-300 font-bold">• {ex.aytTrack}</span>}
+                                {typeof ex.totalD === 'number' && (
+                                  <span>
+                                    • <strong className="text-emerald-400">{ex.totalD}D</strong> / <strong className="text-rose-400">{ex.totalY}Y</strong> / {ex.totalB}B
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                              {chronoDiff !== null && chronoDiff !== undefined && (
+                                <span className={`text-[10px] sm:text-[11px] font-mono font-extrabold ${chronoDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {chronoDiff >= 0 ? `+${chronoDiff}` : chronoDiff}
+                                </span>
+                              )}
+                              <div className="px-2 sm:px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-500/15 to-indigo-500/15 border border-cyan-500/35 font-mono text-[11px] sm:text-xs font-black text-cyan-300">
+                                {Number(ex.totalNet).toFixed(2)}
+                              </div>
+                              <span className={`text-slate-400 text-xs transition-transform ${isExpanded ? 'rotate-180 text-cyan-300' : ''}`}>▾</span>
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="px-3.5 sm:px-4 pb-3.5 pt-2.5 border-t border-indigo-500/15 grid grid-cols-2 gap-2 bg-[#050814]/70">
+                              {Object.entries(ex.sections || {}).map(([secKey, secVal]) => (
+                                <div key={secKey} className="px-2.5 py-2 rounded-xl bg-slate-950/90 border border-slate-800/80 flex items-center justify-between text-xs">
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-slate-200 block truncate capitalize text-[11px] sm:text-xs">{secVal.label || secKey}</span>
+                                    <span className="text-[9px] sm:text-[10px] font-mono text-slate-400">
+                                      <strong className="text-emerald-400">{secVal.d ?? 0}D</strong> • <strong className="text-rose-400">{secVal.y ?? 0}Y</strong>
+                                      {typeof secVal.b === 'number' ? ` • ${secVal.b}B` : ''}
+                                    </span>
+                                  </div>
+                                  <span className="font-mono font-black text-cyan-300 ml-1.5 shrink-0 text-[11px] sm:text-xs">
+                                    {Number(secVal.net || 0).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-indigo-500/20 bg-[#070b1a]">
+                    <table className="w-full text-left border-collapse text-xs min-w-[600px]">
+                      <thead>
+                        <tr className="border-b border-indigo-500/20 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 bg-[#0a1026]">
+                          <th className="px-3.5 py-2.5 min-w-[160px]">Deneme &amp; Tarih</th>
+                          {tableSubjectColumns.map((col) => (
+                            <th key={col.key} className="px-2.5 py-2.5 text-center">
+                              {getShortSubjectLabel(col.key, col.label)}
+                            </th>
+                          ))}
+                          <th className="px-3 py-2.5 text-center">D/Y/B</th>
+                          <th className="px-3 py-2.5 text-right">Net</th>
+                          <th className="px-3 py-2.5 text-right">Fark</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-indigo-500/10">
+                        {paginatedExams.map((ex) => {
+                          const chronoDiff = examChronoDiffMap.get(ex.id);
+                          return (
+                            <tr key={ex.id} className="hover:bg-[#0e1633] transition">
+                              <td className="px-3.5 py-2.5">
+                                <div className="font-bold text-white truncate max-w-[200px]">{ex.examName}</div>
+                                <div className="text-[10px] font-mono text-slate-400">{ex.date}</div>
+                              </td>
+                              {tableSubjectColumns.map((col) => {
+                                const sec = ex.sections?.[col.key];
+                                if (!sec) {
+                                  return <td key={col.key} className="px-2.5 py-2.5 text-center text-slate-600 font-mono">—</td>;
+                                }
+                                return (
+                                  <td key={col.key} className="px-2.5 py-2.5 text-center font-mono">
+                                    <div className="font-black text-cyan-300">{Number(sec.net || 0).toFixed(2)}</div>
+                                    <div className="text-[9px] text-slate-500">{sec.d ?? 0}D/{sec.y ?? 0}Y</div>
+                                  </td>
+                                );
+                              })}
+                              <td className="px-3 py-2.5 text-center font-mono text-[10px] whitespace-nowrap">
+                                <span className="text-emerald-400 font-bold">{ex.totalD ?? 0}</span>/
+                                <span className="text-rose-400 font-bold">{ex.totalY ?? 0}</span>/
+                                <span className="text-slate-400">{ex.totalB ?? 0}</span>
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-mono font-black text-white whitespace-nowrap">
+                                {Number(ex.totalNet).toFixed(2)}
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-mono text-[11px] font-extrabold whitespace-nowrap">
+                                {chronoDiff === null || chronoDiff === undefined ? (
+                                  <span className="text-slate-500">—</span>
+                                ) : (
+                                  <span className={chronoDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                    {chronoDiff >= 0 ? `+${chronoDiff}` : chronoDiff}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {totalPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Sayfa <strong className="text-white">{safePage}</strong> / {totalPages} • {visibleExamsList.length} deneme
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={safePage <= 1}
+                        onClick={() => setExamPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-xl bg-[#070b1a] hover:bg-[#111936] disabled:opacity-35 border border-indigo-500/25 text-slate-200 font-bold transition"
                       >
-                        Ort: {myExamSummary.avg.toFixed(1)}
-                      </text>
-                    </g>
-                  )}
-
-                  {studentArea && <polygon points={studentArea} fill="url(#stCyanArea)" />}
-
-                  {studentChartCoords.points.length >= 2 && (
-                    <polyline
-                      fill="none"
-                      stroke="url(#stCyanStroke)"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points={studentPolyline}
-                      style={{ filter: 'drop-shadow(0 0 8px rgba(34,211,238,0.6))' }}
-                    />
-                  )}
-
-                  {studentChartCoords.points.map((pt, idx) => {
-                    const isFirstOrLast = idx === 0 || idx === studentChartCoords.points.length - 1;
-                    const showLabel = isFirstOrLast || idx % labelStep === 0;
-                    const dotRadius = studentChartCoords.points.length > 16 ? 3 : 4.2;
-
-                    return (
-                      <g
-                        key={idx}
-                        onMouseEnter={() => setHoveredExamIdx(idx)}
-                        onMouseLeave={() => setHoveredExamIdx(null)}
-                        className="cursor-pointer"
+                        ← Önceki
+                      </button>
+                      <button
+                        type="button"
+                        disabled={safePage >= totalPages}
+                        onClick={() => setExamPage((p) => Math.min(totalPages, p + 1))}
+                        className="px-3 py-1.5 rounded-xl bg-[#070b1a] hover:bg-[#111936] disabled:opacity-35 border border-indigo-500/25 text-slate-200 font-bold transition"
                       >
-                        <circle cx={pt.x} cy={pt.y} r="10" fill="transparent" />
-                        <circle
-                          cx={pt.x}
-                          cy={pt.y}
-                          r={hoveredExamIdx === idx ? '6' : dotRadius}
-                          fill="#ffffff"
-                          stroke="#22d3ee"
-                          strokeWidth="2.2"
-                          style={{ filter: 'drop-shadow(0 0 8px #22d3ee)' }}
-                        />
-                        {showLabel && (
-                          <>
-                            <text x={pt.x} y={pt.y - 9} textAnchor="middle" fill="#67e8f9" fontSize="9" fontFamily="monospace" fontWeight="bold">
-                              {pt.val.toFixed(1)}
-                            </text>
-                            <text x={pt.x} y={svgH - 2} textAnchor="middle" fill="rgba(148,163,184,0.7)" fontSize="8.5" fontFamily="monospace">
-                              {pt.shortDate}
-                            </text>
-                          </>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-
-                {hoveredExamIdx !== null && recentExamsForChart[hoveredExamIdx] && (
-                  <div className="absolute top-1 right-2 px-3 py-2 rounded-xl bg-slate-950/95 border border-cyan-500/40 text-[11px] shadow-xl pointer-events-none z-10">
-                    <div className="font-extrabold text-white">{recentExamsForChart[hoveredExamIdx].examName}</div>
-                    <div className="font-mono text-cyan-300 font-bold mt-0.5">
-                      {Number(recentExamsForChart[hoveredExamIdx].totalNet).toFixed(2)} Net • {recentExamsForChart[hoveredExamIdx].date}
+                        Sonraki →
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Sağ: Branş Ortalamaları */}
-            <div className="lg:col-span-5 p-4 rounded-2xl bg-[#070b1a] border border-indigo-500/20 space-y-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-fuchsia-300 block">
-                Branş Bazlı Ortalama Performansım
-              </span>
-              <div className="space-y-3 max-h-[210px] overflow-y-auto pr-1">
-                {mySubjectStats.map((sec) => (
-                  <div key={sec.key} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-200">
-                        {sec.label} <span className="text-[10px] font-mono text-slate-500">({sec.max})</span>
-                      </span>
-                      <div className="flex items-center gap-2 font-mono">
-                        <span className="font-black text-white">{sec.avg.toFixed(2)} Net</span>
-                        {myFilteredExams.length >= 2 && (
-                          <span className={`text-[10px] font-bold ${sec.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {sec.delta >= 0 ? `+${sec.delta}` : sec.delta}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-900 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 transition-all duration-500"
-                        style={{ width: `${sec.pct}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Alt: Ölçeklenebilir Deneme Arşivi (Arama + Sıralama + Kart/Tablo + Sayfalama) */}
-            <div className="lg:col-span-12 space-y-3.5 pt-2 border-t border-indigo-500/15">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300 block">
-                    {examTypeTab} Deneme Arşivim ({visibleExamsList.length} / {myFilteredExams.length})
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Kart görünümünde ders detaylarını açmak için denemeye tıklayın, hızlı karşılaştırma için Tablo moduna geçin.
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Arama */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Deneme adı veya tarih ara..."
-                      value={examSearch}
-                      onChange={(e) => setExamSearch(e.target.value)}
-                      className="w-48 sm:w-56 pl-3 pr-7 py-1.5 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
-                    />
-                    {examSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setExamSearch('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-[11px]"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Sıralama */}
-                  <select
-                    value={examSort}
-                    onChange={(e) => setExamSort(e.target.value)}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#070b1a] border border-indigo-500/25 text-xs font-bold text-cyan-200 focus:outline-none"
-                  >
-                    <option value="newest">En Yeni Tarih</option>
-                    <option value="oldest">En Eski Tarih</option>
-                    <option value="highest">En Yüksek Net</option>
-                    <option value="lowest">En Düşük Net</option>
-                  </select>
-
-                  {/* Kart / Kompakt Tablo Geçişi */}
-                  <div className="flex p-0.5 rounded-xl bg-[#070b1a] border border-indigo-500/25">
-                    {[
-                      { id: 'cards', label: 'Kartlar' },
-                      { id: 'table', label: 'Kompakt Tablo' }
-                    ].map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setExamViewMode(m.id)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
-                          examViewMode === m.id
-                            ? 'bg-indigo-500/30 text-white border border-indigo-400/40'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {visibleExamsList.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-[#070b1a] border border-indigo-500/15 text-center text-xs text-slate-400">
-                  Arama kriterine uygun deneme bulunamadı.
-                </div>
-              ) : examViewMode === 'cards' ? (
-                /* KART GÖRÜNÜMÜ (Sayfalanmış + Akordeon) */
-                <div className="grid md:grid-cols-2 gap-3">
-                  {paginatedExams.map((ex) => {
-                    const isExpanded = expandedExamId === ex.id;
-                    const chronoDiff = examChronoDiffMap.get(ex.id);
-                    return (
-                      <div key={ex.id} className={`rounded-2xl bg-[#070b1a] border transition overflow-hidden ${isExpanded ? 'border-cyan-500/45 shadow-[0_0_20px_rgba(34,211,238,0.08)]' : 'border-indigo-500/20'}`}>
-                        <button
-                          type="button"
-                          onClick={() => setExpandedExamId(isExpanded ? null : ex.id)}
-                          className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#0d1430] transition text-left"
-                        >
-                          <div className="min-w-0">
-                            <div className="text-sm font-extrabold text-white truncate">{ex.examName}</div>
-                            <div className="text-[11px] font-mono text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
-                              <span>{ex.date}</span>
-                              {ex.aytTrack && <span className="text-fuchsia-300 font-bold">• {ex.aytTrack}</span>}
-                              {typeof ex.totalD === 'number' && (
-                                <span>
-                                  • <strong className="text-emerald-400">{ex.totalD}D</strong> / <strong className="text-rose-400">{ex.totalY}Y</strong> / {ex.totalB}B
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            {chronoDiff !== null && chronoDiff !== undefined && (
-                              <span className={`text-[11px] font-mono font-extrabold ${chronoDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {chronoDiff >= 0 ? `+${chronoDiff}` : chronoDiff}
-                              </span>
-                            )}
-                            <div className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-500/15 to-indigo-500/15 border border-cyan-500/35 font-mono text-xs font-black text-cyan-300">
-                              {Number(ex.totalNet).toFixed(2)} Net
-                            </div>
-                            <span className={`text-slate-400 text-xs transition-transform ${isExpanded ? 'rotate-180 text-cyan-300' : ''}`}>▾</span>
-                          </div>
-                        </button>
-
-                        {isExpanded && (
-                          <div className="px-4 pb-3.5 pt-2.5 border-t border-indigo-500/15 grid grid-cols-2 gap-2 bg-[#050814]/70">
-                            {Object.entries(ex.sections || {}).map(([secKey, secVal]) => (
-                              <div key={secKey} className="px-2.5 py-2 rounded-xl bg-slate-950/90 border border-slate-800/80 flex items-center justify-between text-xs">
-                                <div className="min-w-0">
-                                  <span className="font-bold text-slate-200 block truncate capitalize">{secVal.label || secKey}</span>
-                                  <span className="text-[10px] font-mono text-slate-400">
-                                    <strong className="text-emerald-400">{secVal.d ?? 0}D</strong> • <strong className="text-rose-400">{secVal.y ?? 0}Y</strong>
-                                    {typeof secVal.b === 'number' ? ` • ${secVal.b}B` : ''}
-                                  </span>
-                                </div>
-                                <span className="font-mono font-black text-cyan-300 ml-2 shrink-0">
-                                  {Number(secVal.net || 0).toFixed(2)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* KOMPAKT TABLO GÖRÜNÜMÜ (Çoklu Denemeleri Tek Bakışta Kıyaslama) */
-                <div className="overflow-x-auto rounded-2xl border border-indigo-500/20 bg-[#070b1a]">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-indigo-500/20 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 bg-[#0a1026]">
-                        <th className="px-3.5 py-2.5 min-w-[180px]">Deneme &amp; Tarih</th>
-                        {tableSubjectColumns.map((col) => (
-                          <th key={col.key} className="px-2.5 py-2.5 text-center">
-                            {getShortSubjectLabel(col.key, col.label)}
-                          </th>
-                        ))}
-                        <th className="px-3 py-2.5 text-center">D/Y/B</th>
-                        <th className="px-3 py-2.5 text-right">Net</th>
-                        <th className="px-3 py-2.5 text-right">Fark</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-indigo-500/10">
-                      {paginatedExams.map((ex) => {
-                        const chronoDiff = examChronoDiffMap.get(ex.id);
-                        return (
-                          <tr key={ex.id} className="hover:bg-[#0e1633] transition">
-                            <td className="px-3.5 py-2.5">
-                              <div className="font-bold text-white truncate max-w-[230px]">{ex.examName}</div>
-                              <div className="text-[10px] font-mono text-slate-400">{ex.date}</div>
-                            </td>
-                            {tableSubjectColumns.map((col) => {
-                              const sec = ex.sections?.[col.key];
-                              if (!sec) {
-                                return <td key={col.key} className="px-2.5 py-2.5 text-center text-slate-600 font-mono">—</td>;
-                              }
-                              return (
-                                <td key={col.key} className="px-2.5 py-2.5 text-center font-mono">
-                                  <div className="font-black text-cyan-300">{Number(sec.net || 0).toFixed(2)}</div>
-                                  <div className="text-[9px] text-slate-500">{sec.d ?? 0}D/{sec.y ?? 0}Y</div>
-                                </td>
-                              );
-                            })}
-                            <td className="px-3 py-2.5 text-center font-mono text-[10px] whitespace-nowrap">
-                              <span className="text-emerald-400 font-bold">{ex.totalD ?? 0}</span>/
-                              <span className="text-rose-400 font-bold">{ex.totalY ?? 0}</span>/
-                              <span className="text-slate-400">{ex.totalB ?? 0}</span>
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-mono font-black text-white whitespace-nowrap">
-                              {Number(ex.totalNet).toFixed(2)}
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-mono text-[11px] font-extrabold whitespace-nowrap">
-                              {chronoDiff === null || chronoDiff === undefined ? (
-                                <span className="text-slate-500">—</span>
-                              ) : (
-                                <span className={chronoDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                                  {chronoDiff >= 0 ? `+${chronoDiff}` : chronoDiff}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Sayfalama Çubuğu (Yalnızca 1 sayfadan fazla deneme varsa görünür) */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-1 text-xs">
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    Sayfa <strong className="text-white">{safePage}</strong> / {totalPages} • Toplam {visibleExamsList.length} deneme
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={safePage <= 1}
-                      onClick={() => setExamPage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1.5 rounded-xl bg-[#070b1a] hover:bg-[#111936] disabled:opacity-35 border border-indigo-500/25 text-slate-200 font-bold transition"
-                    >
-                      ← Önceki
-                    </button>
-                    <button
-                      type="button"
-                      disabled={safePage >= totalPages}
-                      onClick={() => setExamPage((p) => Math.min(totalPages, p + 1))}
-                      className="px-3 py-1.5 rounded-xl bg-[#070b1a] hover:bg-[#111936] disabled:opacity-35 border border-indigo-500/25 text-slate-200 font-bold transition"
-                    >
-                      Sonraki →
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-        <h2 className="text-xl font-extrabold text-white flex items-center gap-2"><Clock className="w-5 h-5 text-amber-400" /> Ödev Takibi ve Canlı Geri Sayım</h2>
+      {/* ÖDEV TAKİBİ */}
+      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <h2 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2"><Clock className="w-5 h-5 text-amber-400" /> Ödev Takibi ve Canlı Geri Sayım</h2>
         {myHomeworks.length === 0 ? (
           <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs text-slate-400">Aktif ödeviniz bulunmuyor.</div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
             {myHomeworks.map((hw) => (
-              <div key={hw.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between gap-4">
+              <div key={hw.id} className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between gap-4">
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <span className="text-xs font-bold text-indigo-400">{hw.teacherName}</span>
-                    <span className={`px-2.5 py-1 rounded-lg font-mono text-xs font-bold ${hw.isCompleted ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
-                      {hw.isCompleted ? '✓ Teslim Edildi' : `⏱ Kalan: ${formatRemainingTime(hw.deadline)}`}
+                    <span className={`px-2.5 py-1 rounded-lg font-mono text-[11px] sm:text-xs font-bold ${hw.isCompleted ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                      {hw.isCompleted ? '✓ Teslim Edildi' : `⏱ ${formatRemainingTime(hw.deadline)}`}
                     </span>
                   </div>
-                  <h3 className="text-base font-extrabold text-white">{hw.title}</h3>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white">{hw.title}</h3>
                   <p className="text-xs text-slate-400 mt-1">{hw.description}</p>
                 </div>
                 <button disabled={hw.isCompleted} onClick={() => handleMarkHomeworkDone(hw.id, hw.title)} className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-900 disabled:text-emerald-400 text-white font-bold text-xs transition">

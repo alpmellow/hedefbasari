@@ -5,7 +5,7 @@ import {
   GraduationCap, RefreshCw, Edit3, Trash2, UserPlus, Clock,
   Download, RotateCcw, CheckCircle2, XCircle, Key, ShieldCheck, FileCode
 } from '../common/Icons';
-import { HEDEFBASARI_CLASS_OPTIONS, DAYS_TR, HOURS_LIST, MAX_SLOT_QUOTA } from '../../constants';
+import { HEDEFBASARI_CLASS_OPTIONS, DAYS_TR, HOURS_LIST, MAX_SLOT_QUOTA, ENABLE_EXAM_ANALYTICS } from '../../constants';
 import {
   getPurposeBadgeStyle, maskTcKimlik, generateRandom6DigitPin,
   generateRandom8CharKey, compressImageFromFile, getNextMidnightMs, getTodayDateKey, formatSlotLabel
@@ -334,25 +334,28 @@ export default function AdminDashboardView({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-5 sm:space-y-8">
+      {/* ÜST BAŞLIK & MOBİLDE TEK SATIR YATAY KAYDIRMALI SEKME ŞERİDİ */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5 sm:gap-4 border-b border-slate-800 pb-4 sm:pb-6">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-widest text-amber-400">Tam Yetkili Yönetim Merkezi</span>
-          <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">HedefBaşarı Admin Paneli</h1>
+          <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-amber-400">
+            Tam Yetkili Yönetim Merkezi
+          </span>
+          <h1 className="text-xl sm:text-3xl font-black text-white mt-0.5 sm:mt-1">HedefBaşarı Admin Paneli</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 lg:flex-wrap lg:overflow-visible">
           {[
-            { id: 'students', label: `1. Öğrenci Yönetimi (${students.length})` },
-            { id: 'staff', label: `2. Kadro Yönetimi (${staff.length})` },
-            { id: 'schedule', label: '3. Ders Programı Matrisi' },
-            { id: 'approvals', label: `4. Randevu Onay Masası (${activeDeskAppointments.length})` },
-            { id: 'security', label: '5. Yönetici Güvenlik & Profil' },
-            { id: 'exams', label: `6. Deneme & Analiz (${exams.length})` }
+            { id: 'students', label: `1. Öğrenciler (${students.length})` },
+            { id: 'staff', label: `2. Kadro (${staff.length})` },
+            { id: 'schedule', label: '3. Ders Programı' },
+            { id: 'approvals', label: `4. Onay Masası (${activeDeskAppointments.length})` },
+            { id: 'security', label: '5. Güvenlik & Profil' },
+            ...(ENABLE_EXAM_ANALYTICS ? [{ id: 'exams', label: `6. Deneme & Analiz (${exams.length})` }] : [])
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`shrink-0 whitespace-nowrap px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition ${
                 activeTab === tab.id
                   ? tab.id === 'exams'
                     ? 'bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 text-slate-950 font-black shadow-lg shadow-indigo-500/25'
@@ -367,10 +370,10 @@ export default function AdminDashboardView({
       </div>
 
       {activeTab === 'students' && (
-        <div className="grid lg:grid-cols-3 gap-8 items-start">
-          <form onSubmit={handleSaveStudent} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 h-fit lg:sticky lg:top-6">
+        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8 items-start">
+          <form onSubmit={handleSaveStudent} className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 h-fit lg:sticky lg:top-20">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-cyan-400" />
                 {editingStudentId ? 'Kayıtlı Öğrenciyi Düzenle' : 'Yeni Öğrenci Kaydı'}
               </h2>
@@ -379,7 +382,7 @@ export default function AdminDashboardView({
 
             <div>
               <label className="block text-xs font-bold text-slate-400 mb-1">11 Haneli TC Kimlik No</label>
-              <input type="text" maxLength={11} required placeholder="Örn: 30000000512" value={studentForm.tcNo} onChange={(e) => setStudentForm({ ...studentForm, tcNo: e.target.value.replace(/\D/g, '') })} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono" />
+              <input type="text" inputMode="numeric" maxLength={11} required placeholder="Örn: 30000000512" value={studentForm.tcNo} onChange={(e) => setStudentForm({ ...studentForm, tcNo: e.target.value.replace(/\D/g, '') })} className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono" />
             </div>
 
             <div>
@@ -424,9 +427,9 @@ export default function AdminDashboardView({
           </form>
 
           <div className="lg:col-span-2 space-y-3">
-            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="relative flex-1">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3">
+                <div className="col-span-2 sm:flex-1 relative">
                   <input
                     type="text"
                     placeholder="Ad soyad, TC No veya Şifre (PIN) ile ara..."
@@ -448,7 +451,7 @@ export default function AdminDashboardView({
                 <select
                   value={studentClassFilter}
                   onChange={(e) => setStudentClassFilter(e.target.value)}
-                  className="px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-cyan-300 focus:outline-none"
+                  className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-cyan-300 focus:outline-none"
                 >
                   <option value="ALL">Tüm Sınıflar</option>
                   {HEDEFBASARI_CLASS_OPTIONS.map((cls) => (
@@ -459,7 +462,7 @@ export default function AdminDashboardView({
                 <select
                   value={studentPaymentFilter}
                   onChange={(e) => setStudentPaymentFilter(e.target.value)}
-                  className="px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none"
+                  className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none"
                 >
                   <option value="ALL">Tüm Ödemeler</option>
                   <option value="Ödendi">Ödendi</option>
@@ -488,38 +491,40 @@ export default function AdminDashboardView({
               </div>
             </div>
 
-            <div className="max-h-[500px] overflow-y-auto pr-1.5 space-y-3">
+            <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3">
               {filteredStudents.length === 0 ? (
                 <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center text-xs text-slate-400">
                   Arama kriterlerinize uygun öğrenci bulunamadı.
                 </div>
               ) : (
                 filteredStudents.map((s) => (
-                  <div key={s.id} className={`p-5 rounded-2xl bg-slate-900 border transition flex flex-wrap items-center justify-between gap-4 ${editingStudentId === s.id ? 'border-amber-500/70 ring-1 ring-amber-500/30' : 'border-slate-800'}`}>
-                    <div className="flex items-center gap-3.5">
-                      <UserAvatar src="" name={s.fullName} className="w-11 h-11" ringClass="ring-2 ring-cyan-500/30" textClass="text-xs" />
-                      <div>
-                        <div className="flex items-center gap-2.5">
-                          <h3 className="text-base font-extrabold text-white">{s.fullName}</h3>
-                          <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-500/15 text-indigo-300">{s.className}</span>
+                  <div key={s.id} className={`p-4 sm:p-5 rounded-2xl bg-slate-900 border transition flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 ${editingStudentId === s.id ? 'border-amber-500/70 ring-1 ring-amber-500/30' : 'border-slate-800'}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <UserAvatar src="" name={s.fullName} className="w-10 h-10 sm:w-11 sm:h-11 shrink-0" ringClass="ring-2 ring-cyan-500/30" textClass="text-xs" />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm sm:text-base font-extrabold text-white truncate">{s.fullName}</h3>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-500/15 text-indigo-300">{s.className}</span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-4 mt-1 text-xs text-slate-400 font-mono">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-1 text-xs text-slate-400 font-mono">
                           <span>TC: {maskTcKimlik(s.tcNo)}</span>
                           <span>Şifre: <strong className="text-emerald-400">{s.pin}</strong></span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${s.paymentStatus === 'Ödendi' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${s.paymentStatus === 'Ödendi' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
                         {s.paymentStatus}
                       </span>
-                      <button onClick={() => handleEditStudentClick(s)} className="px-3 py-2 rounded-xl bg-slate-800 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition">
-                        <Edit3 className="w-3.5 h-3.5" /> Düzenle
-                      </button>
-                      <button onClick={() => handleDeleteStudent(s.id, s.fullName)} className="p-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 transition">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleEditStudentClick(s)} className="px-3 py-1.5 sm:py-2 rounded-xl bg-slate-800 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition">
+                          <Edit3 className="w-3.5 h-3.5" /> Düzenle
+                        </button>
+                        <button onClick={() => handleDeleteStudent(s.id, s.fullName)} className="p-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 transition">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -530,20 +535,20 @@ export default function AdminDashboardView({
       )}
 
       {activeTab === 'staff' && (
-        <div className="grid lg:grid-cols-3 gap-8 items-start">
-          <form onSubmit={handleSaveTeacher} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 h-fit lg:sticky lg:top-6">
-            <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8 items-start">
+          <form onSubmit={handleSaveTeacher} className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 h-fit lg:sticky lg:top-20">
+            <h2 className="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-amber-400" />
               {editingTeacherId ? 'Eğitmeni Düzenle' : 'Yeni Eğitmen Ekle'}
             </h2>
 
             <div>
               <label className="block text-xs font-bold text-slate-400 mb-1">11 Haneli TC No</label>
-              <input type="text" maxLength={11} required placeholder="Örn: 60000000142" value={teacherForm.tcNo} onChange={(e) => setTeacherForm({ ...teacherForm, tcNo: e.target.value.replace(/\D/g, '') })} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono" />
+              <input type="text" inputMode="numeric" maxLength={11} required placeholder="Örn: 60000000142" value={teacherForm.tcNo} onChange={(e) => setTeacherForm({ ...teacherForm, tcNo: e.target.value.replace(/\D/g, '') })} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono" />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1">Ad Soyad & Ünvan</label>
+              <label className="block text-xs font-bold text-slate-400 mb-1">Ad Soyad &amp; Ünvan</label>
               <input type="text" required placeholder="Örn: Prof. Dr. Kemal Aydın" value={teacherForm.fullName} onChange={(e) => setTeacherForm({ ...teacherForm, fullName: e.target.value })} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm" />
             </div>
 
@@ -553,14 +558,14 @@ export default function AdminDashboardView({
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
-              <label className="block text-xs font-bold text-amber-300">Profil Fotoğrafı (Masaüstünden Seç)</label>
+              <label className="block text-xs font-bold text-amber-300">Profil Fotoğrafı (Cihazdan Seç)</label>
               <div className="flex items-center gap-3">
-                <UserAvatar src={teacherForm.photoUrl} name={teacherForm.fullName || 'Yeni Eğitmen'} className="w-14 h-14" rounded="rounded-full" ringClass="ring-2 ring-amber-400/60" textClass="text-sm" />
-                <div className="flex-1 space-y-1.5">
+                <UserAvatar src={teacherForm.photoUrl} name={teacherForm.fullName || 'Yeni Eğitmen'} className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" rounded="rounded-full" ringClass="ring-2 ring-amber-400/60" textClass="text-sm" />
+                <div className="flex-1 min-w-0 space-y-1.5">
                   <input type="file" accept="image/*" onChange={(e) => {
                     const file = e.target.files?.[0];
                     compressImageFromFile(file, (dataUrl) => { setTeacherForm((prev) => ({ ...prev, photoUrl: dataUrl })); });
-                  }} className="w-full text-xs text-slate-300 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 cursor-pointer" />
+                  }} className="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 cursor-pointer" />
                   {teacherForm.photoUrl && (
                     <button type="button" onClick={() => setTeacherForm((prev) => ({ ...prev, photoUrl: '' }))} className="text-[11px] text-rose-400 hover:underline font-bold">Fotoğrafı Kaldır</button>
                   )}
@@ -591,22 +596,22 @@ export default function AdminDashboardView({
             </div>
           </form>
 
-          <div className="lg:col-span-2 max-h-[580px] overflow-y-auto pr-1.5 space-y-4">
+          <div className="lg:col-span-2 max-h-[580px] overflow-y-auto pr-1 space-y-3.5">
             {staff.map((t) => (
-              <div key={t.id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <UserAvatar src={t.photoUrl} name={t.fullName} className="w-16 h-16" rounded="rounded-full" ringClass="ring-2 ring-indigo-500/50" textClass="text-lg" />
-                  <div>
-                    <span className="text-xs font-bold text-indigo-400">{t.branch}</span>
-                    <h3 className="text-base font-extrabold text-white">{t.fullName}</h3>
-                    <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-400 font-mono">
+              <div key={t.id} className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <UserAvatar src={t.photoUrl} name={t.fullName} className="w-12 h-12 sm:w-16 sm:h-16 shrink-0" rounded="rounded-full" ringClass="ring-2 ring-indigo-500/50" textClass="text-base sm:text-lg" />
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-indigo-400 block truncate">{t.branch}</span>
+                    <h3 className="text-sm sm:text-base font-extrabold text-white truncate">{t.fullName}</h3>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-400 font-mono">
                       <span>TC: {maskTcKimlik(t.tcNo)}</span>
                       <span>Anahtar: <strong className="text-cyan-300">{t.securityKey}</strong></span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
                   <button onClick={() => handleEditTeacherClick(t)} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1"><Edit3 className="w-3.5 h-3.5" /> Düzenle</button>
                   <button onClick={() => handleDeleteTeacher(t.id, t.fullName)} className="px-3 py-2 rounded-xl bg-rose-500/15 text-rose-300 text-xs font-bold flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Sil</button>
                 </div>
@@ -617,33 +622,42 @@ export default function AdminDashboardView({
       )}
 
       {activeTab === 'schedule' && (
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
             <div>
-              <h2 className="text-lg font-extrabold text-white">Haftalık Ders & Etüt Programı Matrisi (08:30 – 17:30)</h2>
-              <p className="text-xs text-slate-400">Sabah 5 ders (08:30-12:30), Öğle Arası (12:30-13:30) ve Öğleden Sonra 5 Ders/Etüt (13:30-17:30).</p>
+              <h2 className="text-base sm:text-lg font-extrabold text-white">Haftalık Ders &amp; Etüt Programı Matrisi (08:30 – 20:50)</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Sabah 4 ders (08:30–12:20), Öğle Arası (12:20–13:30), Öğleden Sonra 4 ders (13:30–17:20), Akşam Arası (17:20–19:00) ve Akşam 2 ders (19:00–20:50).
+              </p>
+              <p className="sm:hidden text-[11px] text-cyan-400 font-bold mt-1">← Tabloyu görmek için parmağınızla sağa/sola kaydırın →</p>
             </div>
-            <select value={selectedTeacherForSchedule?.id || ''} onChange={(e) => setScheduleTeacherId(e.target.value)} className="px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm font-bold text-cyan-300">
+            <select value={selectedTeacherForSchedule?.id || ''} onChange={(e) => setScheduleTeacherId(e.target.value)} className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm font-bold text-cyan-300">
               {staff.map((t) => (<option key={t.id} value={t.id}>{t.fullName} ({t.branch})</option>))}
             </select>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className="overflow-x-auto -mx-2 px-2">
+            <table className="w-full text-left border-collapse text-xs min-w-[960px]">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-3 px-3 min-w-[100px]">Gün / Saat</th>
+                  <th className="py-3 px-3 min-w-[100px] sticky left-0 bg-slate-900 z-10">Gün / Saat</th>
                   {HOURS_LIST.map((h) => (
                     <React.Fragment key={h.slot}>
-                      {h.slot === 6 && (
+                      {h.slot === 5 && (
                         <th className="py-2 px-1.5 text-center bg-amber-500/10 border-x border-amber-500/20 text-amber-300 font-extrabold text-[10px]">
                           ÖĞLE ARASI<br />
-                          <span className="font-mono text-[9px] text-amber-400/80">12:30-13:30</span>
+                          <span className="font-mono text-[9px] text-amber-400/80">12:20-13:30</span>
+                        </th>
+                      )}
+                      {h.slot === 9 && (
+                        <th className="py-2 px-1.5 text-center bg-fuchsia-500/10 border-x border-fuchsia-500/20 text-fuchsia-300 font-extrabold text-[10px]">
+                          AKŞAM ARASI<br />
+                          <span className="font-mono text-[9px] text-fuchsia-400/80">17:20-19:00</span>
                         </th>
                       )}
                       <th className="py-2.5 px-1.5 text-center">
                         <div className="font-extrabold text-slate-200 text-[11px]">{h.title}</div>
-                        <div className="font-mono text-[10px] text-cyan-400">{h.range}</div>
+                        <div className="font-mono text-[10px] text-cyan-400 whitespace-nowrap">{h.range}</div>
                       </th>
                     </React.Fragment>
                   ))}
@@ -652,13 +666,18 @@ export default function AdminDashboardView({
               <tbody>
                 {DAYS_TR.map((day) => (
                   <tr key={day} className="border-b border-slate-800/60">
-                    <td className="py-3 px-3 font-extrabold text-white">{day}</td>
+                    <td className="py-3 px-3 font-extrabold text-white sticky left-0 bg-slate-900 z-10">{day}</td>
                     {HOURS_LIST.map((h) => {
                       const entry = (selectedTeacherForSchedule?.weeklySchedule || []).find((s) => s.day === day && s.hourSlot === h.slot);
                       return (
                         <React.Fragment key={h.slot}>
-                          {h.slot === 6 && (
+                          {h.slot === 5 && (
                             <td className="p-1 bg-amber-500/5 border-x border-amber-500/15 text-center font-bold text-[10px] text-amber-500/60 select-none">
+                              ARA
+                            </td>
+                          )}
+                          {h.slot === 9 && (
+                            <td className="p-1 bg-fuchsia-500/5 border-x border-fuchsia-500/15 text-center font-bold text-[10px] text-fuchsia-400/60 select-none">
                               ARA
                             </td>
                           )}
@@ -680,25 +699,25 @@ export default function AdminDashboardView({
 
       {activeTab === 'approvals' && (
         <div className="space-y-4">
-          <div className="p-5 rounded-2xl bg-slate-900 border border-amber-500/30 flex flex-wrap items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-amber-500/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-400">
-                <Clock className="w-4 h-4" /> Gece 00:00 Sunucu Otonom Randevu Onay Masası Temizleme Aktif
+                <Clock className="w-4 h-4 shrink-0" /> Gece 00:00 Sunucu Otonom Temizlik Aktif
               </div>
               <p className="text-xs text-slate-300">
-                Her gece saat <strong>00:00</strong>'da sunucu arka planda onay masasını arşivler (Haftalık 12'li öğrenci kotaları korunur). Son işlem: <strong className="text-cyan-300">{lastDailyPurgeLabel}</strong>
+                Her gece <strong>00:00</strong>'da onay masası arşivlenir (12'li öğrenci kotaları korunur). Son işlem: <strong className="text-cyan-300">{lastDailyPurgeLabel}</strong>
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-right">
+            <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2.5">
+              <div className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 flex sm:block items-center justify-between sm:text-right">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">00:00 Temizliğe Kalan</span>
                 <span className="font-mono text-sm font-extrabold text-amber-400">{formatMidnightCountdown()}</span>
               </div>
-              <button type="button" onClick={handleExportAppointments} className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-extrabold flex items-center gap-2 transition">
-                <Download className="w-4 h-4" /> Günün Çıktısını Al (Excel/CSV)
+              <button type="button" onClick={handleExportAppointments} className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-extrabold flex items-center justify-center gap-2 transition">
+                <Download className="w-4 h-4" /> Günün Çıktısını Al (CSV)
               </button>
-              <button type="button" onClick={onTriggerDailyPurge} className="px-4 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-xs font-extrabold flex items-center gap-2 transition">
-                <RotateCcw className="w-4 h-4" /> Masayı Şimdi Arşivle & Temizle
+              <button type="button" onClick={onTriggerDailyPurge} className="px-4 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-xs font-extrabold flex items-center justify-center gap-2 transition">
+                <RotateCcw className="w-4 h-4" /> Masayı Şimdi Arşivle
               </button>
             </div>
           </div>
@@ -713,21 +732,21 @@ export default function AdminDashboardView({
               const maxCap = slot.maxQuota || MAX_SLOT_QUOTA;
 
               return (
-                <div key={slot.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4">
-                    <div className="flex items-center gap-3">
-                      <UserAvatar src={teacherObj?.photoUrl} name={slot.teacherName} className="w-11 h-11" rounded="rounded-full" ringClass="ring-2 ring-cyan-500/40" />
-                      <div>
-                        <span className="text-xs font-bold text-cyan-400">{slot.teacherBranch}</span>
-                        <h3 className="text-lg font-extrabold text-white">{slot.teacherName} — {slot.day}, {formatSlotLabel(slot.hourSlot)}</h3>
+                <div key={slot.id} className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <UserAvatar src={teacherObj?.photoUrl} name={slot.teacherName} className="w-10 h-10 sm:w-11 sm:h-11 shrink-0" rounded="rounded-full" ringClass="ring-2 ring-cyan-500/40" />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-cyan-400 block truncate">{slot.teacherBranch}</span>
+                        <h3 className="text-sm sm:text-lg font-extrabold text-white">{slot.teacherName} — {slot.day}, {formatSlotLabel(slot.hourSlot)}</h3>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
                         Konu: {lockedTopic}
                       </span>
-                      <span className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold ${activeCount >= maxCap ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
-                        Kota: {activeCount} / {maxCap} Öğrenci
+                      <span className={`px-3 py-1 rounded-full text-xs font-extrabold ${activeCount >= maxCap ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-slate-950 text-slate-300 border border-slate-800'}`}>
+                        Kota: {activeCount} / {maxCap}
                       </span>
                     </div>
                   </div>
@@ -736,7 +755,7 @@ export default function AdminDashboardView({
                     {slot.participants.map((p) => (
                       <div
                         key={p.studentId}
-                        className={`py-3 px-2 rounded-lg flex flex-wrap items-center justify-between gap-3 text-sm transition-all duration-500 ease-out transform ${
+                        className={`py-3 px-2 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm transition-all duration-500 ease-out transform ${
                           animatingAction.id === `${slot.id}-${p.studentId}`
                             ? animatingAction.type === 'approve'
                               ? 'scale-[1.02] bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10 relative'
@@ -744,17 +763,17 @@ export default function AdminDashboardView({
                             : 'scale-100 bg-transparent opacity-100'
                         }`}
                       >
-                        <div className="flex flex-wrap items-center gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-bold text-white">{p.studentName}</span>
                           <span className="text-xs text-slate-400">({p.studentClass})</span>
-                          <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${getPurposeBadgeStyle(p.sessionType)}`}>{p.sessionType}</span>
-                          <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${p.status === 'Approved' || p.status === 'Proactive' ? 'bg-emerald-500/15 text-emerald-300' : p.status === 'Rejected' ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                          <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${getPurposeBadgeStyle(p.sessionType)}`}>{p.sessionType}</span>
+                          <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${p.status === 'Approved' || p.status === 'Proactive' ? 'bg-emerald-500/15 text-emerald-300' : p.status === 'Rejected' ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'}`}>
                             {p.status === 'Approved' ? 'Onaylandı' : p.status === 'Rejected' ? 'Reddedildi' : p.status === 'Proactive' ? 'Koç Çağrısı' : 'Bekliyor'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleParticipantDecision(slot.id, p.studentId, 'Approved')} className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Onayla</button>
-                          <button onClick={() => handleParticipantDecision(slot.id, p.studentId, 'Rejected')} className="px-3.5 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-bold flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> Reddet</button>
+                        <div className="grid grid-cols-2 sm:flex items-center gap-2">
+                          <button onClick={() => handleParticipantDecision(slot.id, p.studentId, 'Approved')} className="px-3.5 py-2 sm:py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Onayla</button>
+                          <button onClick={() => handleParticipantDecision(slot.id, p.studentId, 'Rejected')} className="px-3.5 py-2 sm:py-1.5 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-bold flex items-center justify-center gap-1"><XCircle className="w-3.5 h-3.5" /> Reddet</button>
                         </div>
                       </div>
                     ))}
@@ -767,12 +786,12 @@ export default function AdminDashboardView({
       )}
 
       {activeTab === 'security' && (
-        <div className="grid lg:grid-cols-2 gap-8">
-          <form onSubmit={handleUpdateAdminCredentials} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
+          <form onSubmit={handleUpdateAdminCredentials} className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
             <div className="flex items-center gap-2.5 border-b border-slate-800 pb-4">
-              <Key className="w-5 h-5 text-amber-400" />
+              <Key className="w-5 h-5 text-amber-400 shrink-0" />
               <div>
-                <h2 className="text-lg font-extrabold text-white">Yönetici Profil Fotoğrafı, Kullanıcı Adı & Şifre</h2>
+                <h2 className="text-base sm:text-lg font-extrabold text-white">Yönetici Profil Fotoğrafı, Kullanıcı Adı &amp; Şifre</h2>
                 <p className="text-xs text-slate-400">Şifreniz sunucuda bcrypt ile geri döndürülemez biçimde hashlenerek saklanır.</p>
               </div>
             </div>
@@ -781,14 +800,14 @@ export default function AdminDashboardView({
               <div className={`p-3.5 rounded-xl text-xs font-bold ${adminCredAlert.type === 'error' ? 'bg-rose-500/15 text-rose-300' : 'bg-emerald-500/15 text-emerald-300'}`}>{adminCredAlert.text}</div>
             )}
 
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-4">
-              <UserAvatar src={adminCredForm.photoUrl} name={adminCredForm.newUsername || 'Yönetici'} className="w-16 h-16" rounded="rounded-full" ringClass="ring-2 ring-amber-400" textClass="text-base" />
-              <div className="flex-1 space-y-1.5">
-                <label className="block text-xs font-bold text-amber-300">Yönetici Profil Resmi (Masaüstünden Seç)</label>
+            <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3.5">
+              <UserAvatar src={adminCredForm.photoUrl} name={adminCredForm.newUsername || 'Yönetici'} className="w-14 h-14 sm:w-16 sm:h-16 shrink-0" rounded="rounded-full" ringClass="ring-2 ring-amber-400" textClass="text-base" />
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <label className="block text-xs font-bold text-amber-300">Yönetici Profil Resmi (Cihazdan Seç)</label>
                 <input type="file" accept="image/*" onChange={(e) => {
                   const file = e.target.files?.[0];
                   compressImageFromFile(file, (dataUrl) => { setAdminCredForm((prev) => ({ ...prev, photoUrl: dataUrl })); });
-                }} className="w-full text-xs text-slate-300 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:bg-amber-500/20 file:text-amber-300 cursor-pointer" />
+                }} className="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:bg-amber-500/20 file:text-amber-300 cursor-pointer" />
                 {adminCredForm.photoUrl && <button type="button" onClick={() => setAdminCredForm((prev) => ({ ...prev, photoUrl: '' }))} className="text-[11px] text-rose-400 hover:underline font-bold">Fotoğrafı Kaldır</button>}
               </div>
             </div>
@@ -818,26 +837,26 @@ export default function AdminDashboardView({
             </button>
           </form>
 
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 h-fit">
+          <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 h-fit">
             <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-400" /> Sunucu & Altyapı Bilgileri
+              <ShieldCheck className="w-5 h-5 text-emerald-400" /> Sunucu &amp; Altyapı Bilgileri
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
               Aktif yönetici kullanıcı adınız: <strong className="text-amber-300 font-mono">{adminAuth.username}</strong>. Haftalık sıfırlama her Pazartesi 00:00'da, günlük temizlik ise her gece 00:00'da sunucu arkasında otonom çalışır.
             </p>
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button type="button" onClick={onTriggerWeeklyReset} className="px-4 py-2.5 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-extrabold flex items-center gap-2">
-                <RotateCcw className="w-4 h-4" /> Haftalık Etüt & Ödevleri Şimdi Sıfırla
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 pt-2">
+              <button type="button" onClick={onTriggerWeeklyReset} className="px-4 py-2.5 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-extrabold flex items-center justify-center gap-2">
+                <RotateCcw className="w-4 h-4" /> Haftalık Etüt &amp; Ödevleri Şimdi Sıfırla
               </button>
-              <button type="button" onClick={onOpenDevOps} className="px-4 py-2.5 rounded-xl bg-slate-950 border border-cyan-500/40 text-cyan-300 text-xs font-extrabold flex items-center gap-2">
-                <FileCode className="w-4 h-4" /> Sunucu & Docker Kodları
+              <button type="button" onClick={onOpenDevOps} className="px-4 py-2.5 rounded-xl bg-slate-950 border border-cyan-500/40 text-cyan-300 text-xs font-extrabold flex items-center justify-center gap-2">
+                <FileCode className="w-4 h-4" /> Sunucu &amp; Docker Kodları
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {activeTab === 'exams' && (
+      {ENABLE_EXAM_ANALYTICS && activeTab === 'exams' && (
         <AdminExamAnalyticsTab
           students={students}
           appointments={appointments}

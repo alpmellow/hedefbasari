@@ -6,3 +6,16 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
 }
+html, body {
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

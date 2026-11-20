@@ -263,18 +263,18 @@ export default function ExamEntryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-      <div className="w-full max-w-2xl rounded-3xl bg-[#0c1228] border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.18)] overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-[#111936] via-[#131d42] to-[#191538] border-b border-indigo-500/20 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md">
+      <div className="w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-2xl sm:rounded-3xl bg-[#0c1228] border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.18)] overflow-hidden">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-[#111936] via-[#131d42] to-[#191538] border-b border-indigo-500/20 flex items-center justify-between shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${isEditMode ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24]' : 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]'}`} />
-              <span className={`text-[10px] font-extrabold uppercase tracking-widest ${isEditMode ? 'text-amber-300' : 'text-cyan-300'}`}>
-                {isEditMode ? 'Kayıt Düzenleme Modu' : 'Merkezi Veri Girişi • Seri Mod Destekli'}
+              <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest ${isEditMode ? 'text-amber-300' : 'text-cyan-300'}`}>
+                {isEditMode ? 'Kayıt Düzenleme Modu' : 'Merkezi Veri Girişi • Seri Mod'}
               </span>
             </div>
-            <h2 className="text-lg font-black text-white mt-0.5">
-              {isEditMode ? 'Deneme Sınavı Sonucunu Güncelle' : 'Yeni Deneme Sınavı Sonucu Ekle'}
+            <h2 className="text-base sm:text-lg font-black text-white mt-0.5">
+              {isEditMode ? 'Deneme Sonucunu Güncelle' : 'Yeni Deneme Sonucu Ekle'}
             </h2>
           </div>
           <button
@@ -286,7 +286,7 @@ export default function ExamEntryModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           {feedback.text && (
             <div
               className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border ${
@@ -300,7 +300,7 @@ export default function ExamEntryModal({
             </div>
           )}
 
-          <div className="grid sm:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[11px] font-bold text-slate-400">Öğrenci Seçimi</label>
@@ -350,8 +350,8 @@ export default function ExamEntryModal({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#070b1a] border border-slate-800/80">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-[#070b1a] border border-slate-800/80">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2">
               {['TYT', 'AYT'].map((type) => (
                 <button
                   key={type}
@@ -360,7 +360,7 @@ export default function ExamEntryModal({
                     setExamType(type);
                     setScores({});
                   }}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition ${
+                  className={`px-4 py-2 sm:py-1.5 rounded-xl text-xs font-black transition ${
                     examType === type
                       ? 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-slate-950 shadow-[0_0_16px_rgba(6,182,212,0.35)]'
                       : 'bg-slate-900 text-slate-400 hover:text-white'
@@ -372,40 +372,42 @@ export default function ExamEntryModal({
             </div>
 
             {examType === 'AYT' && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center justify-between sm:justify-end gap-1.5">
                 <span className="text-[10px] font-bold text-slate-500 uppercase mr-1">Alan:</span>
-                {[
-                  { id: 'SAY', label: 'Sayısal' },
-                  { id: 'EA', label: 'Eşit Ağırlık' },
-                  { id: 'SOZ', label: 'Sözel' }
-                ].map((tr) => (
-                  <button
-                    key={tr.id}
-                    type="button"
-                    onClick={() => {
-                      setAytTrack(tr.id);
-                      setScores({});
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
-                      aytTrack === tr.id
-                        ? 'bg-fuchsia-500/25 text-fuchsia-300 border border-fuchsia-500/40'
-                        : 'bg-slate-900 text-slate-400 border border-slate-800'
-                    }`}
-                  >
-                    {tr.label}
-                  </button>
-                ))}
+                <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+                  {[
+                    { id: 'SAY', label: 'Sayısal' },
+                    { id: 'EA', label: 'Eşit Ağ.' },
+                    { id: 'SOZ', label: 'Sözel' }
+                  ].map((tr) => (
+                    <button
+                      key={tr.id}
+                      type="button"
+                      onClick={() => {
+                        setAytTrack(tr.id);
+                        setScores({});
+                      }}
+                      className={`flex-1 sm:flex-none px-2.5 py-1.5 sm:py-1 rounded-lg text-[11px] font-bold transition ${
+                        aytTrack === tr.id
+                          ? 'bg-fuchsia-500/25 text-fuchsia-300 border border-fuchsia-500/40'
+                          : 'bg-slate-900 text-slate-400 border border-slate-800'
+                      }`}
+                    >
+                      {tr.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
           <div className="space-y-2">
-            <div className="grid grid-cols-12 px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              <span className="col-span-5">Ders (Soru)</span>
+            <div className="grid grid-cols-12 px-2 sm:px-3 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="col-span-4 sm:col-span-5">Ders</span>
               <span className="col-span-2 text-center text-emerald-400">Doğru</span>
               <span className="col-span-2 text-center text-rose-400">Yanlış</span>
               <span className="col-span-1 text-center text-slate-500">Boş</span>
-              <span className="col-span-2 text-right text-cyan-300">Net</span>
+              <span className="col-span-3 sm:col-span-2 text-right text-cyan-300">Net</span>
             </div>
 
             {activeSections.map((sec) => {
@@ -413,46 +415,50 @@ export default function ExamEntryModal({
               return (
                 <div
                   key={sec.key}
-                  className={`grid grid-cols-12 items-center gap-2 px-3 py-2 rounded-xl border transition ${
+                  className={`grid grid-cols-12 items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl border transition ${
                     info.overflow
                       ? 'bg-rose-950/30 border-rose-500/60'
                       : 'bg-[#080d20] border-indigo-500/15'
                   }`}
                 >
-                  <div className="col-span-5">
-                    <span className="text-xs font-bold text-slate-100">{sec.label}</span>
-                    <span className="ml-1.5 text-[10px] font-mono text-slate-500">({sec.max})</span>
+                  <div className="col-span-4 sm:col-span-5 min-w-0">
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-100 block truncate">{sec.label}</span>
+                    <span className="text-[9px] sm:text-[10px] font-mono text-slate-500">({sec.max} Soru)</span>
                   </div>
 
                   <div className="col-span-2">
                     <input
                       type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       min="0"
                       max={sec.max}
                       placeholder="0"
                       value={scores[sec.key]?.d ?? ''}
                       onChange={(e) => handleScoreChange(sec.key, 'd', e.target.value)}
-                      className="w-full py-1.5 rounded-lg bg-slate-950 border border-emerald-500/25 text-center font-mono text-xs font-bold text-emerald-400 focus:outline-none focus:border-emerald-400"
+                      className="w-full py-2 sm:py-1.5 rounded-lg bg-slate-950 border border-emerald-500/25 text-center font-mono text-sm sm:text-xs font-bold text-emerald-400 focus:outline-none focus:border-emerald-400"
                     />
                   </div>
 
                   <div className="col-span-2">
                     <input
                       type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       min="0"
                       max={sec.max}
                       placeholder="0"
                       value={scores[sec.key]?.y ?? ''}
                       onChange={(e) => handleScoreChange(sec.key, 'y', e.target.value)}
-                      className="w-full py-1.5 rounded-lg bg-slate-950 border border-rose-500/25 text-center font-mono text-xs font-bold text-rose-400 focus:outline-none focus:border-rose-400"
+                      className="w-full py-2 sm:py-1.5 rounded-lg bg-slate-950 border border-rose-500/25 text-center font-mono text-sm sm:text-xs font-bold text-rose-400 focus:outline-none focus:border-rose-400"
                     />
                   </div>
 
-                  <div className="col-span-1 text-center font-mono text-xs text-slate-500">
+                  <div className="col-span-1 text-center font-mono text-[11px] sm:text-xs text-slate-500">
                     {info.b}
                   </div>
 
-                  <div className="col-span-2 text-right font-mono text-xs font-black text-cyan-300">
+                  <div className="col-span-3 sm:col-span-2 text-right font-mono text-xs font-black text-cyan-300">
                     {info.net.toFixed(2)}
                   </div>
                 </div>
@@ -460,23 +466,23 @@ export default function ExamEntryModal({
             })}
           </div>
 
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-indigo-500/10 to-fuchsia-500/10 border border-cyan-500/25 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-4 text-xs font-mono">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-indigo-500/10 to-fuchsia-500/10 border border-cyan-500/25 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 text-xs font-mono">
               <span className="text-emerald-400 font-bold">{calculatedPreview.totalD} D</span>
               <span className="text-rose-400 font-bold">{calculatedPreview.totalY} Y</span>
               <span className="text-slate-400">{calculatedPreview.totalB} B</span>
             </div>
             <div className="text-right">
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
-                Hesaplanan Toplam {examType} Neti
+              <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+                Toplam {examType} Neti
               </span>
-              <span className="text-2xl font-black font-mono bg-gradient-to-r from-cyan-300 via-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">
+              <span className="text-xl sm:text-2xl font-black font-mono bg-gradient-to-r from-cyan-300 via-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">
                 {calculatedPreview.totalNet.toFixed(2)} / {calculatedPreview.maxPossible}
               </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 pt-1">
+          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-1">
             <button
               type="button"
               onClick={() => submitExam(false)}
@@ -490,7 +496,7 @@ export default function ExamEntryModal({
                 onClick={() => submitExam(true)}
                 className="flex-1 py-3 rounded-xl bg-fuchsia-500/20 hover:bg-fuchsia-500/30 border border-fuchsia-500/40 text-fuchsia-200 font-extrabold text-xs sm:text-sm transition"
               >
-                Kaydet & Sonraki Öğrenci ➔
+                Kaydet &amp; Sonraki Öğrenci ➔
               </button>
             )}
           </div>
